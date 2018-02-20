@@ -6,9 +6,15 @@ module Type =
     type ByteAddress = ByteAddress of int
     type WordAddress = WordAddress of int
 
-    type VersionAddress = VersionAddress of ByteAddress
-    type StaticMemoryAddress = StaticMemoryAddress of ByteAddress
-    type DictionaryAddress = DictionaryAddress of ByteAddress
+    // And now some specialized addresses
+    type VersionAddress = VersionAddress of int
+    type StaticMemoryAddress = StaticMemoryAddress of int
+    type DictionaryAddress = DictionaryAddress of int
+    type AbbreviationsTableAddress = AbbreviationsTableAddress of int
+    type AbbreviationAddress = AbbreviationAddress of int
+    type ZStringAddress = ZStringAddress of int
+
+    type Abbreviation = Abbreviation of int
 
     // A typed reference to a specific bit in a byte or word
     type BitNumber = BitNumber of int
