@@ -25,6 +25,7 @@
     <Compile Include="Utility.fs" />
     <Compile Include="Memory.fs" />
     <Compile Include="Machine.fs" />
+    <Compile Include="Text.fs" />
     <Compile Include="Dictionary.fs" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />

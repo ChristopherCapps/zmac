@@ -21,6 +21,14 @@ module Type =
     let BitNumber5 = BitNumber 5
     let BitNumber6 = BitNumber 6
     let BitNumber7 = BitNumber 7
+    let BitNumber8 = BitNumber 8
+    let BitNumber9 = BitNumber 9
+    let BitNumber10 = BitNumber 10
+    let BitNumber11 = BitNumber 11
+    let BitNumber12 = BitNumber 12
+    let BitNumber13 = BitNumber 13
+    let BitNumber14 = BitNumber 14
+    let BitNumber15 = BitNumber 15
 
     // A typed reference to a number of consecutive bits
     type BitCount = BitCount of int

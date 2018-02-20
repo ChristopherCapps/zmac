@@ -41,11 +41,11 @@ module Utility =
     let wordAddressToByteAddress (WordAddress address) =
         ByteAddress address
 
-    let readBit (BitNumber n) b =
-        (b &&& (0x1uy <<< n)) <> 0uy
+    let readBit (BitNumber n) word =
+        ((word &&& (0x1 <<< n)) >>> n) = 1
 
-    let readBits b (BitCount count) =
-        (0xffuy >>> (8-count)) &&& b
+    let readBits (BitNumber high) (BitCount count) word =
+        (((0xff >>> (8-count)) <<< high) &&& word) >>> high
 
     let bytesToWord (hi:byte, lo:byte) =
         (int hi) <<< 8 ||| (int lo)
@@ -53,6 +53,8 @@ module Utility =
     let byteToChar (b:byte) = char b
 
     let byteToInt (b:byte) = int b
+
+    let intToChar (i:int) = char i
 
     // Divides the given array into two arrays at the specified address,
     // with the first array containing the address.
