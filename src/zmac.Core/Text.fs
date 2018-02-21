@@ -6,14 +6,16 @@ open Machine
 
 module Text =
 
-    type AlphabetId             = A0 | A1 | A2 | A2V1
+    type AlphabetId             = A0 | A1 | A2
     type Alphabet               = Alphabet of AlphabetId*char array
+
+    [<Literal>]
+    let AbbreviationsCount      = 96
 
     // 3 standard character tables, each with 26 members; Version 1 has a different A2
     let AlphabetA0              = Alphabet (A0, [| 'a'..'z' |])
     let AlphabetA1              = Alphabet (A1, [| 'A'..'Z' |])    
     let AlphabetA2              = Alphabet (A2, Seq.toArray " \n0123456789.,!?_#\'/\"\\-:()")
-    let AlphabetA2V1            = Alphabet (A2V1, Seq.toArray " 0123456789.,!?_#\'/\"\\<-:()")
 
     // Special Z-Codes which do not directly represent Alphabet characters but are instructions
     let InsertSpaceCharacter            = 0             // code equivalent to ASCII space    
@@ -27,18 +29,11 @@ module Text =
 
     let InsertAbbreviationRequest = [InsertAbbreviationFromSet1; InsertAbbreviationFromSet2; InsertAbbreviationFromSet3]
 
-    // Codes unique to older Z-machines (V1 & V2)
-    // TODO: Supporting these will require maintaining current alphabet state 
-    let ShiftOnceToNextAlphabet             = 2
-    let ShiftOnceToNextNextAlphabet         = 3
-    let ShiftPermanentlyToNextAlphabet      = 4
-    let ShiftPermanentlyToNextNextAlphabet  = 5
-
     // Simple helper for internal use that makes matching operations clearer
     let isAlphabetCharacterIn alphabet ch = 
         match alphabet with
         | A0 | A1 -> ch > ShiftOnceToA2 // 5
-        | A2 | A2V1 -> ch > InsertZsciiCode // 6
+        | A2 -> ch > InsertZsciiCode // 6
 
     // Fetches the character associated with the given code in the provided Alphabet
     let readAlphabetCharacterIn (Alphabet (_, chars)) code = 
@@ -99,6 +94,13 @@ module Text =
     // TODO: Consider refactoring such that we read a single ZChar in a separate function; note
     // this will complicate the recursive abbreviation insertion
     let rec readZString machine address =
+        let version = readVersion machine
+
+        let readAbbreviationAsChars abbreviationSet abbreviationIndex =
+            let abbreviation = Abbreviation (32 * (abbreviationSet - 1) + abbreviationIndex)
+            let (AbbreviationAddress abbreviationAddress) = abbreviationAddress machine abbreviation
+            readZString machine (ZStringAddress abbreviationAddress)
+            |> Seq.toList
         
         let rec loop zcodes acc =
             // We've processed all the input codes and are
@@ -111,14 +113,11 @@ module Text =
                 //printfn "[Space]"
                 loop zs (acc @ [' '])
 
-            // ZCode sequence to insert an "abbreviation" given its set and index into that set 
+            // ZCode sequence to insert an "abbreviation" given its set and index into that set, post Version 1
             | abbreviationSet::abbreviationIndex::zs 
                 when List.contains abbreviationSet InsertAbbreviationRequest ->
-                    let abbreviation = Abbreviation (32 * (abbreviationSet - 1) + abbreviationIndex)
-                    let (AbbreviationAddress abbreviationAddress) = abbreviationAddress machine abbreviation
-                    let zstring = readZString machine (ZStringAddress abbreviationAddress)
                     //printfn "[Abbreviation: %s]" zstring
-                    loop zs (acc @ (zstring |> Seq.toList)) 
+                    loop zs (acc @ (readAbbreviationAsChars abbreviationSet abbreviationIndex))
 
             // ZCode sequence to insert a character from A1, but only if 'ch' is an actual character and not a special instruction
             | shiftAlphabetOnce::ch::zs when shiftAlphabetOnce = ShiftOnceToA1 && (ch |> isAlphabetCharacterIn A1) -> 
@@ -131,6 +130,7 @@ module Text =
                 loop zs (acc @ [readAlphabetCharacterIn AlphabetA2 ch])
 
             // ZCode sequence to insert a ZSCII character given hi- and lo-order 5-bit chunks
+            // TODO: Need to support an alternate alphabet table for V5 and later
             | shiftAlphabetOnce::alphabetA2Instruction::zsciiHi::zsciiLo::zs 
                 when (shiftAlphabetOnce = ShiftOnceToA2 && alphabetA2Instruction = InsertZsciiCode) -> 
                     //printfn "[ASCII:%d,%d]" z3 z4
@@ -165,3 +165,13 @@ module Text =
     let readAbbreviation machine abbreviation =
         let (AbbreviationAddress address) = abbreviationAddress machine abbreviation
         readZString machine (ZStringAddress address)
+
+    let abbreviationsList machine =
+        [0..(AbbreviationsCount-1)]
+        |> Seq.map (fun i -> readAbbreviation machine (Abbreviation i))
+
+    let showAbbreviations machine =
+        machine
+        |> abbreviationsList
+        |> Seq.mapi (fun i abbr -> sprintf "[%4d] \"%s\"" i abbr)
+        |> Seq.iter (fun line -> printfn "%s" line)

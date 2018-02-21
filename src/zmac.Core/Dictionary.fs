@@ -24,15 +24,15 @@ module Dictionary =
 *)
 
     [<Literal>]
-    let WordEntryEncodedTextLength_V3 = 4
+    let DictionaryEntryEncodedTextLength_V3 = 4
     [<Literal>]
-    let WordEntryEncodedTextLength_V4 = 6
+    let DictionaryEntryEncodedTextLength_V4 = 6
 
-    let wordEntryEncodedTextLength machine =
+    let dictionaryEntryEncodedTextLength machine =
         if (isVersion4OrLater machine) then 
-            WordEntryEncodedTextLength_V4
+            DictionaryEntryEncodedTextLength_V4
         else
-            WordEntryEncodedTextLength_V3
+            DictionaryEntryEncodedTextLength_V3
 
     let wordSeparatorsCountAddress machine = 
         let (DictionaryAddress address) = dictionaryAddress machine
@@ -48,36 +48,36 @@ module Dictionary =
         [|1..(readWordSeparatorsCount machine)|]
         |> Array.map (fun i -> (readByte machine (wordSeparatorAddress machine i)) |> byteToChar)
     
-    let wordEntryLengthAddress machine =
+    let dictionaryEntryLengthAddress machine =
         incrementByteAddressBy (readWordSeparatorsCount machine) (wordSeparatorAddress machine 1) 
 
-    let readWordEntryLength machine =
-        readByte machine (wordEntryLengthAddress machine) |> byteToInt
+    let dictionaryEntryLength machine =
+        readByte machine (dictionaryEntryLengthAddress machine) |> byteToInt
 
-    let wordEntryCountAddress machine =
-        incrementByteAddress (wordEntryLengthAddress machine) |> byteAddressToWordAddress
+    let dictionaryEntryCountAddress machine =
+        incrementByteAddress (dictionaryEntryLengthAddress machine) |> byteAddressToWordAddress
 
-    let readWordEntryCount machine =
-        readWord machine (wordEntryCountAddress machine)
+    let dictionaryEntryCount machine =
+        readWord machine (dictionaryEntryCountAddress machine)
 
-    let wordEntriesAddress machine =
-        incrementWordAddressBy 1 (wordEntryCountAddress machine) |> wordAddressToByteAddress
+    let dictionaryEntriesAddress machine =
+        incrementWordAddressBy 1 (dictionaryEntryCountAddress machine) |> wordAddressToByteAddress
 
-    let wordEntryAddress machine i =
-        let (ByteAddress address) = wordEntriesAddress machine
-        let offset = (i-1)*(readWordEntryLength machine)        
+    let dictionaryEntryAddress machine (DictionaryEntry i) =
+        let (ByteAddress address) = dictionaryEntriesAddress machine
+        let offset = (i-1)*(dictionaryEntryLength machine)        
         ZStringAddress (address + offset)
 
-    let wordEntry machine i =
-        readZString machine (wordEntryAddress machine i)
+    let dictionaryEntry machine i = 
+        readZString machine (dictionaryEntryAddress machine i)
 
-    let wordEntryList machine =
-        [1..(readWordEntryCount machine)]
-        |> Seq.map (wordEntry machine)
+    let dictionaryEntryList machine =
+        [1..(dictionaryEntryCount machine)]
+        |> Seq.map (DictionaryEntry >> dictionaryEntry machine)
 
     let showDictionary machine =
         machine
-        |> wordEntryList
+        |> dictionaryEntryList
         |> Seq.mapi (fun i word -> sprintf "[%4d] %10s  " (i+1) word)
         |> Seq.chunkBySize 4
         |> Seq.map (Seq.fold (+) System.String.Empty)

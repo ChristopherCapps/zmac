@@ -10,10 +10,10 @@ module Type =
     type VersionAddress = VersionAddress of int
     type StaticMemoryAddress = StaticMemoryAddress of int
     type DictionaryAddress = DictionaryAddress of int
+    type DictionaryEntry = DictionaryEntry of int
     type AbbreviationsTableAddress = AbbreviationsTableAddress of int
     type AbbreviationAddress = AbbreviationAddress of int
     type ZStringAddress = ZStringAddress of int
-
     type Abbreviation = Abbreviation of int
 
     // A typed reference to a specific bit in a byte or word
