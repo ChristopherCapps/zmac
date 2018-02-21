@@ -25,6 +25,7 @@
     <Compile Include="Utility.fs" />
     <Compile Include="Memory.fs" />
     <Compile Include="Machine.fs" />
+    <Compile Include="Globals.fs" />
     <Compile Include="Text.fs" />
     <Compile Include="Dictionary.fs" />
   </ItemGroup>

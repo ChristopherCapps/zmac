@@ -2,6 +2,7 @@
 #load "Utility.fs"
 #load "Memory.fs"
 #load "Machine.fs"
+#load "Globals.fs"
 #load "Text.fs"
 #load "Dictionary.fs"
 
@@ -17,7 +18,8 @@ let machine = Machine.createFromFile storyFile
 open Zmac.Core.Type
 open Zmac.Core.Utility
 open Zmac.Core.Machine
+open Zmac.Core.Globals
 open Zmac.Core.Text
 open Zmac.Core.Dictionary
 
-dictionaryEntry machine (DictionaryEntry 10)
+//dictionaryEntry machine (DictionaryEntry 10)

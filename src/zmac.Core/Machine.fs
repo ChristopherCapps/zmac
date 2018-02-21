@@ -12,9 +12,10 @@ module Machine =
 
     let VersionAddress                          = ByteAddress 0x00
     let HighMemoryPointer                       = WordAddress 0x04
-    let StaticMemoryPointer                     = WordAddress 0x0e
-    let DictionaryPointer                       = WordAddress 0x08
-    let AbbreviationsTablePointer               = WordAddress 0x18
+    let DictionaryPointer                       = WordAddress 0x08    
+    let GlobalVariablesTablePointer             = WordAddress 0x0C
+    let StaticMemoryPointer                     = WordAddress 0x0E
+    let AbbreviationsTablePointer               = WordAddress 0x18    
 
     let readByte machine address =
         let sizeOfDynamic = (Memory.getLength machine.dynamicMemory)
@@ -32,9 +33,16 @@ module Machine =
         // Any attempt to write beyond dynamic memory will fail on this call
         { machine with dynamicMemory = Memory.writeByte machine.dynamicMemory address value }
 
+    let writeWord machine address value =
+        let hi = (value >>> 8) &&& 0xFF |> byte
+        let lo = value &&& 0xFF |> byte
+        let machine' = writeByte machine (getHiByteAddress address) hi
+        writeByte machine' (getLoByteAddress address) lo
+
     let dictionaryAddress machine = DictionaryAddress (readWord machine DictionaryPointer)
     let staticMemoryAddress machine = StaticMemoryAddress (readWord machine StaticMemoryPointer)
     let abbreviationsTableAddress machine = AbbreviationsTableAddress (readWord machine AbbreviationsTablePointer)
+    let globalVariablesTableAddress machine = GlobalVariablesTableAddress (readWord machine GlobalVariablesTablePointer)
 
     let create dynamicMemory staticMemory =
         { dynamicMemory = dynamicMemory; staticMemory = staticMemory }
