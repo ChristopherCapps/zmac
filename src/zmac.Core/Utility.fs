@@ -71,3 +71,9 @@ module Utility =
             bs.[address']
         else
             failwithf "%A is out of range for the buffer given" address   
+
+    let charSeqToString (cs:char seq) =
+        cs
+        |> Seq.toArray
+        |> System.String
+        |> string

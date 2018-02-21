@@ -6,17 +6,14 @@ open Machine
 
 module Text =
 
-    type AlphabetId             = A0 | A1 | A2
+    type AlphabetId             = A0 | A1 | A2 | A2V1
     type Alphabet               = Alphabet of AlphabetId*char array
 
-    // 3 standard character tables, each with 26 members
+    // 3 standard character tables, each with 26 members; Version 1 has a different A2
     let AlphabetA0              = Alphabet (A0, [| 'a'..'z' |])
-    let AlphabetA1              = Alphabet (A1, [| 'A'..'Z' |])
-    let AlphabetA2              = Alphabet (A2, [| 
-                                                    char 0; '\n'; 
-                                                    '0'; '1'; '2'; '3'; '4'; '5'; '6'; '7'; '8'; '9'; 
-                                                    '.'; ','; '!'; '?'; '_'; '#'; '''; '"'; '/'; '\\'; '-'; ':'; '('; ')' 
-                                                  |])
+    let AlphabetA1              = Alphabet (A1, [| 'A'..'Z' |])    
+    let AlphabetA2              = Alphabet (A2, Seq.toArray " \n0123456789.,!?_#\'/\"\\-:()")
+    let AlphabetA2V1            = Alphabet (A2V1, Seq.toArray " 0123456789.,!?_#\'/\"\\<-:()")
 
     // Special Z-Codes which do not directly represent Alphabet characters but are instructions
     let InsertSpaceCharacter            = 0             // code equivalent to ASCII space    
@@ -41,10 +38,11 @@ module Text =
     let isAlphabetCharacterIn alphabet ch = 
         match alphabet with
         | A0 | A1 -> ch > ShiftOnceToA2 // 5
-        | A2 -> ch > InsertZsciiCode // 6
+        | A2 | A2V1 -> ch > InsertZsciiCode // 6
 
+    // Fetches the character associated with the given code in the provided Alphabet
     let readAlphabetCharacterIn (Alphabet (_, chars)) code = 
-        let index = code - FirstZCharacterIndex
+        let index = code - FirstZCharacterIndex // the code is offset from the Alphabet index
         if index >= 0 && index < 26 then
             chars.[index]
         else
@@ -56,15 +54,16 @@ module Text =
 
         // These define the structure of a double-byte word representing 3 Z-Codes; they are 
         // only relevant for parsing the sequence of codes and so are declared here
-        let ZCodeOffset         = [ BitNumber10; BitNumber5; BitNumber0 ]
+        let ZCodeOffsets        = [ BitNumber10; BitNumber5; BitNumber0 ]
         let ZStringTerminator   = BitNumber15
         let ZCodeLength         = BitCount5
 
+        // Recursively parse and collect zcodes from the given address until <eos> bit is set
         let rec loop addr acc =
             let word = readWord machine addr
             let isEndOfString = readBit ZStringTerminator word
             let zcodes = 
-                ZCodeOffset 
+                ZCodeOffsets
                 |> List.map (fun offset -> readBits offset ZCodeLength word)
                 |> List.append acc
             if isEndOfString then 
@@ -73,11 +72,21 @@ module Text =
                 loop (incrementWordAddress addr) zcodes                
         loop (WordAddress address) []
 
-    // Given the hi- and lo-order 5-bit code comprising a ZSCII character, returns the mapped character
+    // Given the hi- and lo-order 5-bit code comprising a ZSCII character, returns the mapped character.
+    // See Table 1 (http://inform-fiction.org/zmachine/standards/z1point1/sect03.html) for Unicode translations
+    // and customization for Version 5 and later
     let lookupZsciiCode (hi, lo) =        
         let code = 32*hi + lo |> byte
-        System.Text.Encoding.ASCII.GetChars([| code |]).[0]
-    
+        match code with
+        | 9uy -> Some '\t' // tab
+        | 11uy -> Some ' '
+        | 13uy -> Some '\n'
+        | ch when ch >= 32uy && ch <= 126uy -> // Standard ASCII
+            Some (System.Text.Encoding.ASCII.GetChars([| code |]).[0])
+        | ch when ch >= 155uy && ch <= 223uy // Should be converted to 16-bit Unicode
+            -> Some '?' 
+        | _ -> None
+     
     (* 
         Abbreviations are referenced by a table of addresses. These addresses must be doubled
         and then point to Z-encoded text representing the abbreviation.
@@ -87,8 +96,9 @@ module Text =
         let (AbbreviationsTableAddress tableAddress) = abbreviationsTableAddress machine
         AbbreviationAddress ((readWord machine (incrementWordAddressBy i (WordAddress tableAddress)))*2)
 
+    // TODO: Consider refactoring such that we read a single ZChar in a separate function; note
+    // this will complicate the recursive abbreviation insertion
     let rec readZString machine address =
-        let zcodes = readZCodeSeq machine address
         
         let rec loop zcodes acc =
             // We've processed all the input codes and are
@@ -123,8 +133,10 @@ module Text =
             // ZCode sequence to insert a ZSCII character given hi- and lo-order 5-bit chunks
             | shiftAlphabetOnce::alphabetA2Instruction::zsciiHi::zsciiLo::zs 
                 when (shiftAlphabetOnce = ShiftOnceToA2 && alphabetA2Instruction = InsertZsciiCode) -> 
-                //printfn "[ASCII:%d,%d]" z3 z4
-                loop zs (acc @ [lookupZsciiCode (zsciiHi, zsciiLo)])
+                    //printfn "[ASCII:%d,%d]" z3 z4
+                    match lookupZsciiCode (zsciiHi, zsciiLo) with
+                    | Some ch -> loop zs (acc @ [ch])
+                    | None -> loop zs acc
 
             // ZCode sequence that shifts the Alphabet in order to pad the string; ignore
             | shiftAlphabet1::shiftAlphabet2::zs 
@@ -147,9 +159,8 @@ module Text =
                 //printfn "[Pad]"; 
                 loop zs acc // ignore
         
-        loop zcodes []
-        |> List.toArray
-        |> (System.String >> string)
+        loop (readZCodeSeq machine address) List.empty
+        |> charSeqToString
 
     let readAbbreviation machine abbreviation =
         let (AbbreviationAddress address) = abbreviationAddress machine abbreviation
