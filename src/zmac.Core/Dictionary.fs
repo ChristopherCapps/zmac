@@ -39,10 +39,10 @@ module Dictionary =
         address
 
     let wordSeparatorAddress machine i = 
-        incrementByteAddressBy i (wordSeparatorsCountAddress machine)
+        incrementByteAddressBy i (ByteAddress (wordSeparatorsCountAddress machine))
 
     let readWordSeparatorsCount machine =
-        readByte machine (wordSeparatorsCountAddress machine) |> byteToInt
+        readByte machine (ByteAddress (wordSeparatorsCountAddress machine)) |> byteToInt
 
     let readWordSeparators machine =
         [|1..(readWordSeparatorsCount machine)|]
@@ -64,10 +64,9 @@ module Dictionary =
         incrementWordAddressBy 1 (wordEntryCountAddress machine) |> wordAddressToByteAddress
 
     let wordEntryAddress machine i =
-        let address = wordEntriesAddress machine
-        let offset = (i-1)*(readWordEntryLength machine)
-        incrementByteAddressBy offset address
-        |> byteAddressToWordAddress
+        let (ByteAddress address) = wordEntriesAddress machine
+        let offset = (i-1)*(readWordEntryLength machine)        
+        ZStringAddress (address + offset)
 
     let wordEntry machine i =
         readZString machine (wordEntryAddress machine i)
@@ -81,7 +80,5 @@ module Dictionary =
         |> wordEntryList
         |> Seq.mapi (fun i word -> sprintf "[%4d] %10s  " (i+1) word)
         |> Seq.chunkBySize 4
-        |> Seq.map (fun words -> 
-            words
-            |> Seq.fold (+) System.String.Empty)
+        |> Seq.map (Seq.fold (+) System.String.Empty)
         |> Seq.iter (fun line -> printfn "%s" line)

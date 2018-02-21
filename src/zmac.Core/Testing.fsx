@@ -19,3 +19,5 @@ open Zmac.Core.Utility
 open Zmac.Core.Machine
 open Zmac.Core.Text
 open Zmac.Core.Dictionary
+
+readZString machine (wordEntryAddress machine 10)

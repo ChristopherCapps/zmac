@@ -6,10 +6,8 @@ open Machine
 
 module Text =
 
-    // Structure of a double-byte word representing 3 Z-Characters
-    let zCharOffset         = [ BitNumber10; BitNumber5; BitNumber0 ]
-    let zCharTerminator     = BitNumber15
-    let zCharLength         = BitCount5
+    type AlphabetId             = A0 | A1 | A2
+    type Alphabet               = Alphabet of AlphabetId*char array
 
     // 3 standard character tables, each with 26 members
     let zCharA0 = [| 'a'..'z' |]
@@ -28,7 +26,13 @@ module Text =
 
     // At the given address, reads encoded characters until a terminator bit is set, returning the
     // ordered list of codes. This sequence of codes must be converted to Z-Characters.
-    let readZCharCodeSeq machine address =
+    let readZCharCodeSeq machine (ZStringAddress address) =
+
+        // Structure of a double-byte word representing 3 Z-Characters
+        let zCharOffset         = [ BitNumber10; BitNumber5; BitNumber0 ]
+        let zCharTerminator     = BitNumber15
+        let zCharLength         = BitCount5
+
         let rec loop addr acc =
             let word = readWord machine addr
             let isEndOfString = readBit zCharTerminator word
@@ -40,14 +44,23 @@ module Text =
                 zcodes
             else 
                 loop (incrementWordAddress addr) zcodes                
-        loop address []
+        loop (WordAddress address) []
 
     // Given the hi- and lo-order 5-bit code comprising a ZSCII character, returns the mapped character
     let lookupZsciiCode (hi, lo) =        
         let code = 32*hi + lo |> byte
         System.Text.Encoding.ASCII.GetChars([| code |]).[0]
-        
-    let readZString machine address = 
+    
+    (* 
+        Abbreviations are referenced by a table of addresses. These addresses must be doubled
+        and then point to Z-encoded text representing the abbreviation.
+    *)
+    let abbreviationAddress machine (Abbreviation i) =        
+        // Determine the offset into the table that contains our "packed" abbreviation address
+        let (AbbreviationsTableAddress tableAddress) = abbreviationsTableAddress machine
+        AbbreviationAddress ((readWord machine (incrementWordAddressBy i (WordAddress tableAddress)))*2)
+
+    let readZString machine address =
         let zcodes = readZCharCodeSeq machine address
         
         let rec loop zcodes acc =
@@ -87,3 +100,7 @@ module Text =
         loop zcodes []
         |> List.toArray
         |> (System.String >> string)
+
+    let readAbbreviation machine abbreviation =
+        let (AbbreviationAddress address) = abbreviationAddress machine abbreviation
+        readZString machine (ZStringAddress address)
