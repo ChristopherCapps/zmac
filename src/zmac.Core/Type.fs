@@ -2,6 +2,12 @@ namespace Zmac.Core
 
 module Type =
 
+    // A typed reference to a specific bit in a byte or word
+    type BitNumber = BitNumber of int
+
+    // A typed reference to a number of consecutive bits
+    type BitCount = BitCount of int
+
     // An absolute Z-Machine address which can span the entire machine
     type ByteAddress = ByteAddress of int
     type WordAddress = WordAddress of int
@@ -29,9 +35,10 @@ module Type =
     type ObjectTreeAddress = ObjectTreeAddress of int
     type Object = Object of int
     type ObjectAddress = ObjectAddress of int
-
-    // A typed reference to a specific bit in a byte or word
-    type BitNumber = BitNumber of int
+    type ObjectNumberAddress = ObjectNumberAddress of int    
+    type ObjectAttributesAddress = ObjectAttributesAddress of int
+    type ObjectAttributeAddress = ObjectAttributeAddress of int * BitNumber
+    type ObjectPropertiesAddress = ObjectPropertiesAddress of int
 
     let BitNumber0 = BitNumber 0
     let BitNumber1 = BitNumber 1
@@ -49,9 +56,6 @@ module Type =
     let BitNumber13 = BitNumber 13
     let BitNumber14 = BitNumber 14
     let BitNumber15 = BitNumber 15
-
-    // A typed reference to a number of consecutive bits
-    type BitCount = BitCount of int
     
     let BitCount1 = BitCount 1
     let BitCount2 = BitCount 2

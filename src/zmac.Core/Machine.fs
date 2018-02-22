@@ -34,6 +34,11 @@ module Machine =
         // Any attempt to write beyond dynamic memory will fail on this call
         { machine with dynamicMemory = Memory.writeByte machine.dynamicMemory address value }
 
+    let writeBit machine address bitNumber value =
+        let original = byteToWord (readByte machine address)
+        let modified = wordToByte (writeBit bitNumber original value)
+        writeByte machine address modified
+
     let writeWord machine address value =
         let hi = (value >>> 8) &&& 0xFF |> byte
         let lo = value &&& 0xFF |> byte

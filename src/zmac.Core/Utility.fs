@@ -47,14 +47,26 @@ module Utility =
     let readBits (BitNumber high) (BitCount count) word =
         (((0xff >>> (8-count)) <<< high) &&& word) >>> high
 
+    let writeBit (BitNumber n) word isSet =
+        let mask = 0x1 <<< n
+        if isSet then
+            word ||| mask
+        else
+            word &&& (~~~mask)
+
     let bytesToWord (hi:byte, lo:byte) =
         (int hi) <<< 8 ||| (int lo)
+
+    let byteToWord (b:byte) = 
+        bytesToWord (0uy, b)
 
     let byteToChar (b:byte) = char b
 
     let byteToInt (b:byte) = int b
 
     let intToChar (i:int) = char i
+
+    let wordToByte (w:int) = byte (w &&& 0xFF)
 
     // Divides the given array into two arrays at the specified address,
     // with the first array containing the address.
