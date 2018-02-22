@@ -24,24 +24,25 @@ module Machine =
             Memory.readByte machine.dynamicMemory address
         else
             dereferenceByte machine.staticMemory (decrementByteAddressBy sizeOfDynamic address)
+        |> int
 
     let readWord machine address =
         let hi = readByte machine (getHiByteAddress address) 
         let lo = readByte machine (getLoByteAddress address) 
-        bytesToWord (hi, lo)
+        bytesToWord (byte hi, byte lo)
 
     let writeByte machine address value =
         // Any attempt to write beyond dynamic memory will fail on this call
-        { machine with dynamicMemory = Memory.writeByte machine.dynamicMemory address value }
+        { machine with dynamicMemory = Memory.writeByte machine.dynamicMemory address (byte value) }
 
     let writeBit machine address bitNumber value =
-        let original = byteToWord (readByte machine address)
-        let modified = wordToByte (writeBit bitNumber original value)
+        let original = readByte machine address
+        let modified = writeBit bitNumber original value
         writeByte machine address modified
 
     let writeWord machine address value =
-        let hi = (value >>> 8) &&& 0xFF |> byte
-        let lo = value &&& 0xFF |> byte
+        let hi = (value >>> 8) &&& 0xFF
+        let lo = value &&& 0xFF
         let machine' = writeByte machine (getHiByteAddress address) hi
         writeByte machine' (getLoByteAddress address) lo
 
@@ -57,12 +58,12 @@ module Machine =
     let readVersion machine = 
         let version = readByte machine VersionAddress
         match version with
-        | 1uy -> Version1
-        | 2uy -> Version2
-        | 3uy -> Version3
-        | 4uy -> Version4
-        | 5uy -> Version5
-        | 6uy -> Version6
+        | 1 -> Version1
+        | 2 -> Version2
+        | 3 -> Version3
+        | 4 -> Version4
+        | 5 -> Version5
+        | 6 -> Version6
         | _ -> failwithf "Unrecognized machine version: %d" version
 
     let isVersion4OrLater machine =

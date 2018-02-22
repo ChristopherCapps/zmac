@@ -42,17 +42,17 @@ module Dictionary =
         incrementByteAddressBy i (ByteAddress (wordSeparatorsCountAddress machine))
 
     let readWordSeparatorsCount machine =
-        readByte machine (ByteAddress (wordSeparatorsCountAddress machine)) |> byteToInt
+        readByte machine (ByteAddress (wordSeparatorsCountAddress machine))
 
     let readWordSeparators machine =
         [|1..(readWordSeparatorsCount machine)|]
-        |> Array.map (fun i -> (readByte machine (wordSeparatorAddress machine i)) |> byteToChar)
+        |> Array.map (fun i -> char (readByte machine (wordSeparatorAddress machine i)))
     
     let dictionaryEntryLengthAddress machine =
         incrementByteAddressBy (readWordSeparatorsCount machine) (wordSeparatorAddress machine 1) 
 
     let dictionaryEntryLength machine =
-        readByte machine (dictionaryEntryLengthAddress machine) |> byteToInt
+        readByte machine (dictionaryEntryLengthAddress machine)
 
     let dictionaryEntryCountAddress machine =
         incrementByteAddress (dictionaryEntryLengthAddress machine) |> byteAddressToWordAddress

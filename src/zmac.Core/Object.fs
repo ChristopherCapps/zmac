@@ -32,16 +32,16 @@ module Object =
         let (ObjectTableAddress address) = objectTableAddress machine
         ObjectPropertyDefaultsAddress address
 
-    let objectPropertyDefaultAddress machine (ObjectProperty n) =
+    let objectPropertyDefaultAddress machine (ObjectProperty property) =
         //let (ObjectPropertyNumber n') = n    
-        if n < 1 || n > (objectPropertyCount machine) then
-            failwithf "Object property number out of range: %d. The valid range is %d to %d." n 1 (objectPropertyCount machine)
+        if property < 1 || property > (objectPropertyCount machine) then
+            failwithf "Object property number out of range: %d. The valid range is %d to %d." property 1 (objectPropertyCount machine)
         let (ObjectPropertyDefaultsAddress tableAddress) = objectPropertyDefaultsAddress machine
-        let (WordAddress address) = incrementWordAddressBy (n-1) (WordAddress tableAddress)
+        let (WordAddress address) = incrementWordAddressBy (property-1) (WordAddress tableAddress)
         ObjectPropertyAddress address
 
-    let objectPropertyDefault machine n =
-        let (ObjectPropertyAddress address) = objectPropertyDefaultAddress machine n
+    let objectPropertyDefault machine property =
+        let (ObjectPropertyAddress address) = objectPropertyDefaultAddress machine property
         readWord machine (WordAddress address)
 
     let objectTreeAddress machine = 
@@ -49,67 +49,92 @@ module Object =
         let (WordAddress address) = incrementWordAddressBy (objectPropertyCount machine) (WordAddress tableAddress)
         ObjectTreeAddress address
 
-    let objectAddress machine (Object n) =
-        if n < 1 || n > (objectCount machine) then
-            failwithf "Object number out of range: %d. The valid range is %d to %d." n 1 (objectCount machine)
+    let objectAddress machine (Object obj) =
+        if obj < 1 || obj > (objectCount machine) then
+            failwithf "Object number out of range: %d. The valid range is %d to %d." obj 1 (objectCount machine)
         let (ObjectTreeAddress treeAddress) = objectTreeAddress machine
-        let (ByteAddress address) = (incrementByteAddressBy ((n-1)*(objectEntrySizeBytes machine)) (ByteAddress treeAddress))
+        let (ByteAddress address) = (incrementByteAddressBy ((obj-1)*(objectEntrySizeBytes machine)) (ByteAddress treeAddress))
         ObjectAddress address
 
-    let objectAttributesAddress machine n =
-        let (ObjectAddress address) = objectAddress machine n
+    let objectAttributesAddress machine obj =
+        let (ObjectAddress address) = objectAddress machine obj
         ObjectAttributesAddress address
 
-    let objectAttributeAddress machine n (ObjectAttribute attribute) = 
+    let objectAttributeAddress machine obj (ObjectAttribute attribute) = 
         if attribute < 0 || attribute > ((objectAttributeCount machine) - 1) then
             failwithf "Object attribute number out of range: %d. The valid range is %d to %d." attribute 0 (objectAttributeCount machine)
-        let (ObjectAttributesAddress address) = objectAttributesAddress machine n
+        let (ObjectAttributesAddress address) = objectAttributesAddress machine obj
         let (ByteAddress attributeAddress) = incrementByteAddressBy (attribute / 8)  (ByteAddress address)
         let bitNumber = BitNumber (7 - (attribute % 8))
         ObjectAttributeAddress (attributeAddress, bitNumber)
 
-    let readObjectAttribute machine n attribute =
-        let (ObjectAttributeAddress (address, bitNumber)) = objectAttributeAddress machine n attribute
-        readBit bitNumber (byteToInt (readByte machine (ByteAddress address)))
+    let readObjectAttribute machine obj attribute =
+        let (ObjectAttributeAddress (address, bitNumber)) = objectAttributeAddress machine obj attribute
+        readBit bitNumber (readByte machine (ByteAddress address))
 
-    let writeObjectAttribute machine n attribute isSet =
-        let (ObjectAttributeAddress (address, bitNumber)) = objectAttributeAddress machine n attribute
+    let isObjectAttributeSet = readObjectAttribute
+
+    let writeObjectAttribute machine obj attribute isSet =
+        let (ObjectAttributeAddress (address, bitNumber)) = objectAttributeAddress machine obj attribute
         writeBit machine (ByteAddress address) bitNumber isSet
 
-    let setObjectAttribute machine n attribute = 
-        writeObjectAttribute machine n attribute true
+    let setObjectAttribute machine obj attribute = 
+        writeObjectAttribute machine obj attribute true
 
-    let clearObjectAttribute machine n attribute = 
-        writeObjectAttribute machine n attribute false
+    let clearObjectAttribute machine obj attribute = 
+        writeObjectAttribute machine obj attribute false
 
-    let objectAttributeList machine n =
+    let objectAttributeList machine obj =
         [|0..(objectAttributeCount machine)-1|]
-        |> Array.map (ObjectAttribute >> (readObjectAttribute machine n))
+        |> Array.map (ObjectAttribute >> (readObjectAttribute machine obj))
 
     let readObjectNumber machine (ObjectNumberAddress address) =
         if (isVersion4OrLater machine) then
             readWord machine (WordAddress address)
         else
-            readByte machine (ByteAddress address) |> byteToInt
+            readByte machine (ByteAddress address)
         |> Object
 
-    let objectParentAddress machine n =
-        let (ObjectAttributesAddress address) = objectAttributesAddress machine n
+    let writeObjectNumber machine (ObjectNumberAddress address) (Object obj) =
+        if (isVersion4OrLater machine) then
+            writeWord machine (WordAddress address) obj
+        else
+            writeByte machine (ByteAddress address) obj
+
+    let objectParentAddress machine obj =
+        let (ObjectAttributesAddress address) = objectAttributesAddress machine obj
         ObjectNumberAddress (address + (objectAttributeSizeBytes machine))
 
-    let objectSiblingAddress machine n =
-        let (ObjectNumberAddress parent) = objectParentAddress machine n
+    let objectSiblingAddress machine obj =
+        let (ObjectNumberAddress parent) = objectParentAddress machine obj
         ObjectNumberAddress (parent + (objectNumberSizeBytes machine))
 
-    let objectChildAddress machine n =
-        let (ObjectNumberAddress sibling) = objectSiblingAddress machine n
+    let objectChildAddress machine obj =
+        let (ObjectNumberAddress sibling) = objectSiblingAddress machine obj
         ObjectNumberAddress (sibling + (objectNumberSizeBytes machine))
 
-    let readObjectParent machine n =
-        readObjectNumber machine (objectParentAddress machine n)
+    let private readObjectRelation faddress machine obj =
+        readObjectNumber machine (faddress machine obj)
 
-    let readObjectSibling machine n =
-        readObjectNumber machine (objectSiblingAddress machine n)
+    let private writeObjectRelation faddress machine obj relation =
+        writeObjectNumber machine (faddress machine obj) relation
 
-    let readObjectChild machine n =
-        readObjectNumber machine (objectChildAddress machine n)
+    let readObjectParent = 
+        readObjectRelation objectParentAddress
+
+    let readObjectSibling = 
+        readObjectRelation objectSiblingAddress
+
+    let readObjectChild = 
+        readObjectRelation objectChildAddress
+
+    let objectPropertiesPointer machine obj =
+        let (ObjectNumberAddress child) = objectChildAddress machine obj
+        WordAddress (child + objectNumberSizeBytes machine)
+
+    let objectPropertiesAddress machine obj =
+        ByteAddress (readWord machine (objectPropertiesPointer machine obj))
+
+    let objectShortName machine obj =
+        let (ByteAddress address) = objectPropertiesAddress machine obj
+        Text.readZString machine (ZStringAddress (address+1))
