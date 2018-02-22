@@ -68,12 +68,12 @@ module Dictionary =
         let offset = (i-1)*(dictionaryEntryLength machine)        
         ZStringAddress (address + offset)
 
-    let dictionaryEntry machine i = 
+    let readDictionaryEntry machine i = 
         readZString machine (dictionaryEntryAddress machine i)
 
     let dictionaryEntryList machine =
         [1..(dictionaryEntryCount machine)]
-        |> Seq.map (DictionaryEntry >> dictionaryEntry machine)
+        |> Seq.map (DictionaryEntry >> readDictionaryEntry machine)
 
     let showDictionary machine =
         machine

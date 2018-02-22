@@ -5,6 +5,7 @@
 #load "Globals.fs"
 #load "Text.fs"
 #load "Dictionary.fs"
+#load "Object.fs"
 
 // The following updates the assembly search path
 //#I __SOURCE_DIRECTORY__
@@ -21,5 +22,6 @@ open Zmac.Core.Machine
 open Zmac.Core.Globals
 open Zmac.Core.Text
 open Zmac.Core.Dictionary
+open Zmac.Core.Object
 
 //dictionaryEntry machine (DictionaryEntry 10)

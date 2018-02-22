@@ -12,7 +12,8 @@ module Machine =
 
     let VersionAddress                          = ByteAddress 0x00
     let HighMemoryPointer                       = WordAddress 0x04
-    let DictionaryPointer                       = WordAddress 0x08    
+    let DictionaryPointer                       = WordAddress 0x08  
+    let ObjectTablePointer                      = WordAddress 0x0A  
     let GlobalVariablesTablePointer             = WordAddress 0x0C
     let StaticMemoryPointer                     = WordAddress 0x0E
     let AbbreviationsTablePointer               = WordAddress 0x18    
@@ -40,6 +41,7 @@ module Machine =
         writeByte machine' (getLoByteAddress address) lo
 
     let dictionaryAddress machine = DictionaryAddress (readWord machine DictionaryPointer)
+    let objectTableAddress machine = ObjectTableAddress (readWord machine ObjectTablePointer)
     let staticMemoryAddress machine = StaticMemoryAddress (readWord machine StaticMemoryPointer)
     let abbreviationsTableAddress machine = AbbreviationsTableAddress (readWord machine AbbreviationsTablePointer)
     let globalVariablesTableAddress machine = GlobalVariablesTableAddress (readWord machine GlobalVariablesTablePointer)

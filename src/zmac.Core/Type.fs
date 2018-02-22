@@ -21,6 +21,15 @@ module Type =
     type AbbreviationAddress = AbbreviationAddress of int
     type Abbreviation = Abbreviation of int
 
+    type ObjectTableAddress = ObjectTableAddress of int
+    type ObjectPropertyDefaultsAddress = ObjectPropertyDefaultsAddress of int
+    type ObjectPropertyAddress = ObjectPropertyAddress of int
+    type ObjectProperty = ObjectProperty of int
+    type ObjectAttribute = ObjectAttribute of int
+    type ObjectTreeAddress = ObjectTreeAddress of int
+    type Object = Object of int
+    type ObjectAddress = ObjectAddress of int
+
     // A typed reference to a specific bit in a byte or word
     type BitNumber = BitNumber of int
 
