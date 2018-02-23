@@ -10,11 +10,8 @@ module Object =
     (* Properties are numbered from 1 *)
     (* Attributes are numbered from 0 *)
     
-    let objectCount machine =
+    let objectMaxCount machine =
         if (isVersion4OrLater machine) then 0xFFFF else 0xFF
-
-    let objectRange machine =
-        seq { 1..(objectCount machine) }
 
     let objectPropertyCount machine =
         if (isVersion4OrLater machine) then 63 else 31
@@ -54,6 +51,25 @@ module Object =
         let (ObjectTableAddress tableAddress) = objectTableAddress machine
         let (WordAddress address) = incrementWordAddressBy (objectPropertyCount machine) (WordAddress tableAddress)
         ObjectTreeAddress address
+
+    (* 
+       Guesses the number of objects by finding the lowest address of object properties and assuming that
+       all object tree definitions are below that address. Given the start of the object tree and the
+       size of each object entry, determine the object count. 
+    *)
+    let objectCount machine =
+        let offset = objectEntrySizeBytes machine
+        let rec loop lowPropAddr nextPropAddrPtr (nextObjNum, nextObjAddr) =
+            let nextPropAddr = readWord machine (WordAddress nextPropAddrPtr)
+            let lowPropAddr' = System.Math.Min (lowPropAddr, nextPropAddr)
+            if nextObjAddr >= lowPropAddr' then nextObjNum-1 else 
+                loop lowPropAddr' (nextPropAddrPtr+offset) (nextObjNum+1, nextObjAddr+offset)
+        let (ObjectTreeAddress object1Address) = objectTreeAddress machine        
+        let obj1PropertiesPtr = object1Address + (objectEntrySizeBytes machine) - WordLength
+        loop 0xFFFF obj1PropertiesPtr (2, obj1PropertiesPtr+WordLength)
+
+    let objectRange machine =
+        seq { 1..(objectCount machine) }
 
     let objectAddress machine (Object obj) =
         if obj < 1 || obj > (objectCount machine) then
@@ -169,17 +185,3 @@ module Object =
         |> objectRange
         |> Seq.map (fun i -> objectToString machine (Object i))
         |> Seq.iter (printfn "%s")
-
-    let findObjectCount machine =
-        machine
-        |> objectRange
-        |> Seq.fold (fun (lowestPropertiesAddress, lastObject) i -> 
-            let (ByteAddress propertiesAddress) = objectPropertiesAddress machine (Object i)
-            let (ObjectAddress objectAddress) = objectAddress machine (Object i)
-            if (Option.isNone lastObject) then
-                if (objectAddress + objectEntrySizeBytes machine) >= lowestPropertiesAddress then
-                    (lowestPropertiesAddress, Some i)
-                else
-                    (System.Math.Min (lowestPropertiesAddress, propertiesAddress), lastObject)
-            else
-                (lowestPropertiesAddress, lastObject)) (0xffff, None)
