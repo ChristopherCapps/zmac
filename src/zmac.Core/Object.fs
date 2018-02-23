@@ -22,6 +22,10 @@ module Object =
     let objectAttributeSizeBytes machine =
         if (isVersion4OrLater machine) then 6 else 4
 
+    let objectAttributeMapi machine obj =
+        [0..(objectAttributeCount machine)-1]
+        |> 
+
     let objectNumberSizeBytes machine =
         if (isVersion4OrLater machine) then 2 else 1
 
@@ -138,3 +142,16 @@ module Object =
     let objectShortName machine obj =
         let (ByteAddress address) = objectPropertiesAddress machine obj
         Text.readZString machine (ZStringAddress (address+1))
+
+    let showObject machine obj =
+        let (Object n) = obj
+        let shortName = objectShortName machine obj
+        let (Object parent), (Object sibling), (Object child) = 
+            readObjectParent machine obj,
+            readObjectSibling machine obj,
+            readObjectChild machine obj
+        let attributes = 
+            [0..(objectAttributeCount machine)-1]
+            |> Seq.mapi (fun i b -> (i, b))
+            |> Seq.filter (fun (i, b) -> b)
+            
