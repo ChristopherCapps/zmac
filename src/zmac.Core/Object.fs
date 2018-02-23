@@ -13,18 +13,20 @@ module Object =
     let objectCount machine =
         if (isVersion4OrLater machine) then 0xFFFF else 0xFF
 
+    let objectRange machine =
+        seq { 1..(objectCount machine) }
+
     let objectPropertyCount machine =
         if (isVersion4OrLater machine) then 63 else 31
 
     let objectAttributeCount machine =
         if (isVersion4OrLater machine) then 48 else 32
 
+    let objectAttributeRange machine =
+        seq { 0..(objectAttributeCount machine)-1 }
+
     let objectAttributeSizeBytes machine =
         if (isVersion4OrLater machine) then 6 else 4
-
-    let objectAttributeMapi machine obj =
-        [0..(objectAttributeCount machine)-1]
-        |> 
 
     let objectNumberSizeBytes machine =
         if (isVersion4OrLater machine) then 2 else 1
@@ -89,8 +91,9 @@ module Object =
         writeObjectAttribute machine obj attribute false
 
     let objectAttributeList machine obj =
-        [|0..(objectAttributeCount machine)-1|]
-        |> Array.map (ObjectAttribute >> (readObjectAttribute machine obj))
+        machine
+        |> objectAttributeRange
+        |> Seq.map (ObjectAttribute >> (readObjectAttribute machine obj))
 
     let readObjectNumber machine (ObjectNumberAddress address) =
         if (isVersion4OrLater machine) then
@@ -143,7 +146,7 @@ module Object =
         let (ByteAddress address) = objectPropertiesAddress machine obj
         Text.readZString machine (ZStringAddress (address+1))
 
-    let showObject machine obj =
+    let objectToString machine obj =
         let (Object n) = obj
         let shortName = objectShortName machine obj
         let (Object parent), (Object sibling), (Object child) = 
@@ -151,7 +154,32 @@ module Object =
             readObjectSibling machine obj,
             readObjectChild machine obj
         let attributes = 
-            [0..(objectAttributeCount machine)-1]
-            |> Seq.mapi (fun i b -> (i, b))
-            |> Seq.filter (fun (i, b) -> b)
-            
+            machine
+            |> objectAttributeRange
+            |> Seq.choose (fun i -> if (isObjectAttributeSet machine obj (ObjectAttribute i)) then Some i else None)
+         
+        sprintf "%5d. %-35s[Parent: %5d] [Sibling: %5d] [Child: %5d] [Attributes: %A]" 
+            n shortName parent sibling child attributes
+
+    let showObject machine obj = 
+        printfn "%s" (objectToString machine obj)
+        
+    let showObjects machine =
+        machine
+        |> objectRange
+        |> Seq.map (fun i -> objectToString machine (Object i))
+        |> Seq.iter (printfn "%s")
+
+    let findObjectCount machine =
+        machine
+        |> objectRange
+        |> Seq.fold (fun (lowestPropertiesAddress, lastObject) i -> 
+            let (ByteAddress propertiesAddress) = objectPropertiesAddress machine (Object i)
+            let (ObjectAddress objectAddress) = objectAddress machine (Object i)
+            if (Option.isNone lastObject) then
+                if (objectAddress + objectEntrySizeBytes machine) >= lowestPropertiesAddress then
+                    (lowestPropertiesAddress, Some i)
+                else
+                    (System.Math.Min (lowestPropertiesAddress, propertiesAddress), lastObject)
+            else
+                (lowestPropertiesAddress, lastObject)) (0xffff, None)
