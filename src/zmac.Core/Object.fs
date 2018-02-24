@@ -3,6 +3,7 @@ namespace Zmac.Core
 open Type
 open Utility
 open Machine
+open System.Data
 
 module Object =
 
@@ -68,8 +69,8 @@ module Object =
         let obj1PropertiesPtr = object1Address + (objectEntrySizeBytes machine) - WordLength
         loop 0xFFFF obj1PropertiesPtr (2, obj1PropertiesPtr+WordLength)
 
-    let objectRange machine =
-        seq { 1..(objectCount machine) }
+    let allObjects machine =
+        [1..(objectCount machine)] |> Seq.map Object
 
     let objectAddress machine (Object obj) =
         if obj < 1 || obj > (objectCount machine) then
@@ -158,8 +159,38 @@ module Object =
     let objectPropertiesAddress machine obj =
         ByteAddress (readWord machine (objectPropertiesPointer machine obj))
 
-    let objectShortName machine obj =
+    let objectShortNameAddress = objectPropertiesAddress
+
+    let objectPropertiesDataAddress machine obj =
         let (ByteAddress address) = objectPropertiesAddress machine obj
+        let shortNameLengthWords = readByte machine (ByteAddress address)
+        ObjectPropertiesDataAddress (address + 1 + shortNameLengthWords*WordLength)
+
+    let readObjectProperties machine obj =
+        let rec loop propAddr acc =
+            let size = readByte machine (ByteAddress propAddr)
+            if (isVersion4OrLater machine) then
+                if (readBit BitNumber7 size) then
+                    let propNum = readBits BitNumber0 BitCount5 size
+                    let dataSize = readBits BitNumber0 BitCount5 (readByte machine (ByteAddress (propAddr+1)))
+                    let dataSize' = if dataSize = 0 then 64 else dataSize
+                    let nextPropAddr = propAddr + 1 + dataSize'
+                    loop nextPropAddr (acc@[(ObjectPropertyData (ObjectProperty propNum,
+                                                                 ObjectPropertyDataSize dataSize',
+                                                                 ObjectPropertyDataAddress (propAddr + 2)))])
+            else                
+                if size = 0 then acc
+                else
+                    let dataSize =  (size / 32 + 1)
+                    let nextPropAddr = propAddr + 1 + dataSize
+                    loop nextPropAddr (acc@[(ObjectPropertyData (ObjectProperty (size % 32), 
+                                                                 ObjectPropertyDataSize dataSize, 
+                                                                 ObjectPropertyDataAddress (propAddr + 1)))])
+        let (ObjectPropertiesDataAddress address) = objectPropertiesDataAddress machine obj
+        loop address []
+
+    let objectShortName machine obj =
+        let (ByteAddress address) = objectShortNameAddress machine obj
         Text.readZString machine (ZStringAddress (address+1))
 
     let objectToString machine obj =
@@ -182,6 +213,6 @@ module Object =
         
     let showObjects machine =
         machine
-        |> objectRange
-        |> Seq.map (fun i -> objectToString machine (Object i))
+        |> allObjects
+        |> Seq.map (fun obj -> objectToString machine obj)
         |> Seq.iter (printfn "%s")
