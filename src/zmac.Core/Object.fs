@@ -169,23 +169,29 @@ module Object =
     let readObjectProperties machine obj =
         let rec loop propAddr acc =
             let size = readByte machine (ByteAddress propAddr)
+            if size = 0 then acc else
             if (isVersion4OrLater machine) then
-                if (readBit BitNumber7 size) then
-                    let propNum = readBits BitNumber0 BitCount5 size
-                    let dataSize = readBits BitNumber0 BitCount5 (readByte machine (ByteAddress (propAddr+1)))
+                let propNum = readBits BitNumber0 BitCount6 size
+                if (readBit BitNumber7 size) then                    
+                    let dataSize = readBits BitNumber0 BitCount6 (readByte machine (ByteAddress (propAddr+1)))
                     let dataSize' = if dataSize = 0 then 64 else dataSize
-                    let nextPropAddr = propAddr + 1 + dataSize'
+                    let nextPropAddr = propAddr + 2 + dataSize'
                     loop nextPropAddr (acc@[(ObjectPropertyData (ObjectProperty propNum,
                                                                  ObjectPropertyDataSize dataSize',
                                                                  ObjectPropertyDataAddress (propAddr + 2)))])
-            else                
-                if size = 0 then acc
                 else
-                    let dataSize =  (size / 32 + 1)
+                    let dataSize = if (readBit BitNumber6 size) then 2 else 1
                     let nextPropAddr = propAddr + 1 + dataSize
-                    loop nextPropAddr (acc@[(ObjectPropertyData (ObjectProperty (size % 32), 
-                                                                 ObjectPropertyDataSize dataSize, 
-                                                                 ObjectPropertyDataAddress (propAddr + 1)))])
+                    loop nextPropAddr (acc@[(ObjectPropertyData (ObjectProperty propNum,
+                                                                 ObjectPropertyDataSize dataSize,
+                                                                 ObjectPropertyDataAddress (propAddr + 1)))])                    
+            else                
+                let dataSize =  (size / 32 + 1)
+                let nextPropAddr = propAddr + 1 + dataSize
+                loop nextPropAddr (acc@[(ObjectPropertyData (ObjectProperty (size % 32), 
+                                                             ObjectPropertyDataSize dataSize, 
+                                                             ObjectPropertyDataAddress (propAddr + 1)))])
+                                                                 
         let (ObjectPropertiesDataAddress address) = objectPropertiesDataAddress machine obj
         loop address []
 
