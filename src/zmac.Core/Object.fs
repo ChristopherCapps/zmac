@@ -3,7 +3,6 @@ namespace Zmac.Core
 open Type
 open Utility
 open Machine
-open System.Data
 
 module Object =
 

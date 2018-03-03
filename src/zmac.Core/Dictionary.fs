@@ -29,7 +29,7 @@ module Dictionary =
     let DictionaryEntryEncodedTextLength_V4 = 6
 
     let dictionaryEntryEncodedTextLength machine =
-        if (isVersion4OrLater machine) then 
+        if isVersion4OrLater machine then 
             DictionaryEntryEncodedTextLength_V4
         else
             DictionaryEntryEncodedTextLength_V3
@@ -45,7 +45,7 @@ module Dictionary =
         readByte machine (ByteAddress (wordSeparatorsCountAddress machine))
 
     let readWordSeparators machine =
-        [|1..(readWordSeparatorsCount machine)|]
+        [|1..readWordSeparatorsCount machine|]
         |> Array.map (fun i -> char (readByte machine (wordSeparatorAddress machine i)))
     
     let dictionaryEntryLengthAddress machine =
@@ -63,16 +63,22 @@ module Dictionary =
     let dictionaryEntriesAddress machine =
         incrementWordAddressBy 1 (dictionaryEntryCountAddress machine) |> wordAddressToByteAddress
 
+    let isDictionaryEntryInRange machine (DictionaryEntry i) =
+        i >= 1 && i <= dictionaryEntryCount machine
+
     let dictionaryEntryAddress machine (DictionaryEntry i) =
-        let (ByteAddress address) = dictionaryEntriesAddress machine
-        let offset = (i-1)*(dictionaryEntryLength machine)        
-        ZStringAddress (address + offset)
+        if isDictionaryEntryInRange machine (DictionaryEntry i) then
+            let (ByteAddress address) = dictionaryEntriesAddress machine
+            let offset = (i-1) * dictionaryEntryLength machine
+            ZStringAddress (address + offset)
+        else
+            failwithf "Invalid dictionary entry reference: %d. The valid range is %d to %d." i 1 (dictionaryEntryCount machine)            
 
     let readDictionaryEntry machine i = 
         readZString machine (dictionaryEntryAddress machine i)
 
     let dictionaryEntryList machine =
-        [1..(dictionaryEntryCount machine)]
+        [1..dictionaryEntryCount machine]
         |> Seq.map (DictionaryEntry >> readDictionaryEntry machine)
 
     let showDictionary machine =
