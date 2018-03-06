@@ -8,6 +8,11 @@ module Type =
     // A typed reference to a number of consecutive bits
     type BitCount = BitCount of int
 
+    // A Word is technically a 2-byte value, but represented internally as an int for convenience
+    type ZWord = int
+    // A Byte is technically a 1-byte value, but represented internally as an int for convenience
+    type ZByte = int
+
     // An absolute Z-Machine address which can span the entire machine
     type ByteAddress = ByteAddress of int
     type WordAddress = WordAddress of int

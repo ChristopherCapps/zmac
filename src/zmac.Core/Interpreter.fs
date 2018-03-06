@@ -2,7 +2,9 @@ namespace Zmac.Core
 
 module Interpreter =
 
-    let run machine io =
-        2
+    type T = {
+        machine: Machine.T
+        external: External.T
+    }
 
-    
+    //let make machine external = { machine; external }
