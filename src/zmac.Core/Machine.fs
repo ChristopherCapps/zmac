@@ -7,16 +7,20 @@ module Machine =
     
     type T = { dynamicMemory: Memory.T; staticMemory: byte array }
 
-    [<Literal>]
-    let HeaderSize                              = 64
+    /// This module defines the structure of the header
+    module Header = 
+        [<Literal>]
+        let HeaderSize                              = 64
 
-    let VersionAddress                          = ByteAddress 0x00
-    let HighMemoryPointer                       = WordAddress 0x04
-    let DictionaryPointer                       = WordAddress 0x08  
-    let ObjectTablePointer                      = WordAddress 0x0A  
-    let GlobalVariablesTablePointer             = WordAddress 0x0C
-    let StaticMemoryPointer                     = WordAddress 0x0E
-    let AbbreviationsTablePointer               = WordAddress 0x18    
+        let VersionAddress                          = ByteAddress 0x00
+        let HighMemoryPointer                       = WordAddress 0x04
+        let DictionaryPointer                       = WordAddress 0x08  
+        let ObjectTablePointer                      = WordAddress 0x0A  
+        let GlobalVariablesTablePointer             = WordAddress 0x0C
+        let StaticMemoryPointer                     = WordAddress 0x0E
+        let AbbreviationsTablePointer               = WordAddress 0x18    
+
+    open Header
 
     let readByte machine address =
         let sizeOfDynamic = (Memory.getLength machine.dynamicMemory)
@@ -46,7 +50,7 @@ module Machine =
         let machine' = writeByte machine (getHiByteAddress address) hi
         writeByte machine' (getLoByteAddress address) lo
 
-    let readVersion machine = 
+    let version machine = 
         let version = readByte machine VersionAddress
         match version with
         | 1 -> Version1
@@ -73,7 +77,7 @@ module Machine =
         GlobalVariablesTableAddress (readWord machine GlobalVariablesTablePointer)
 
     let isVersion4OrLater machine =
-        match (readVersion machine) with
+        match (version machine) with
         | Version1 | Version2 | Version3 -> false
         | _ -> true
 
