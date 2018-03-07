@@ -12,13 +12,23 @@ module Machine =
         [<Literal>]
         let HeaderSize                              = 64
 
+        /// The address containing the value of the Z-machine specification to which this story complies
         let VersionAddress                          = ByteAddress 0x00
+        
+        /// A "pointer" is an address where another address is stored
+
+        /// A pointer to the address representing the start of "high" memory
         let HighMemoryPointer                       = WordAddress 0x04
-        let DictionaryPointer                       = WordAddress 0x08  
-        let ObjectTablePointer                      = WordAddress 0x0A  
+        /// A pointer to the address representing the start of the dictionary table
+        let DictionaryPointer                       = WordAddress 0x08
+        /// A pointer to the address representing the start of the object table
+        let ObjectTablePointer                      = WordAddress 0x0A
+        /// A pointer to the address representing the start of the global variables table
         let GlobalVariablesTablePointer             = WordAddress 0x0C
+        /// A pointer to the address representing the start of "static" memory
         let StaticMemoryPointer                     = WordAddress 0x0E
-        let AbbreviationsTablePointer               = WordAddress 0x18    
+        /// A pointer to the address representing the start of the abbreviations table
+        let AbbreviationsTablePointer               = WordAddress 0x18
 
     open Header
 

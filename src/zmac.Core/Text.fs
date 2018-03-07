@@ -94,7 +94,7 @@ module Text =
     // TODO: Consider refactoring such that we read a single ZChar in a separate function; note
     // this will complicate the recursive abbreviation insertion
     let rec readZString machine address =
-        let version = readVersion machine
+        //let version = version machine
 
         let readAbbreviationAsChars abbreviationSet abbreviationIndex =
             let abbreviation = Abbreviation (32 * (abbreviationSet - 1) + abbreviationIndex)
