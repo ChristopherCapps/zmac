@@ -3,16 +3,16 @@ namespace Zmac.Core
 open Zmac.Core.Type
 open Zmac.Core.Utility
 
-module Machine =
+module Model =
     
-    type T = { dynamicMemory: Memory.T; staticMemory: byte array }
+    type T = { dynamicMemory: Memory.Dynamic.T; staticMemory: Memory.Static.T }
 
     /// This module defines the structure of the header
     module Header = 
         [<Literal>]
         let HeaderSize                              = 64
 
-        /// The address containing the value of the Z-machine specification to which this story complies
+        /// The address containing the value of the Z-model specification to which this story complies
         let VersionAddress                          = ByteAddress 0x00
         
         /// A "pointer" is an address where another address is stored
@@ -32,36 +32,36 @@ module Machine =
 
     open Header
 
-    let readByte machine address =
-        let sizeOfDynamic = (Memory.getLength machine.dynamicMemory)
+    let readByte model address =
+        let sizeOfDynamic = Memory.Dynamic.length model.dynamicMemory
         if (isAddressInRange address sizeOfDynamic) then
-            Memory.readByte machine.dynamicMemory address
+            Memory.Dynamic.read model.dynamicMemory address
         else
-            dereferenceByte machine.staticMemory (decrementByteAddressBy sizeOfDynamic address)
+            Memory.Static.read model.staticMemory (decrementByteAddressBy sizeOfDynamic address)
         |> int
 
-    let readWord machine address =
-        let hi = readByte machine (getHiByteAddress address) 
-        let lo = readByte machine (getLoByteAddress address) 
+    let readWord model address =
+        let hi = readByte model (getHiByteAddress address) 
+        let lo = readByte model (getLoByteAddress address) 
         bytesToWord (byte hi, byte lo)
 
-    let writeByte machine address value =
+    let writeByte model address value =
         // Any attempt to write beyond dynamic memory will fail on this call
-        { machine with dynamicMemory = Memory.writeByte machine.dynamicMemory address (byte value) }
+        { model with dynamicMemory = Memory.Dynamic.write model.dynamicMemory address (byte value) }
 
-    let writeBit machine address bitNumber value =
-        let original = readByte machine address
+    let writeBit model address bitNumber value =
+        let original = readByte model address
         let modified = writeBit bitNumber original value
-        writeByte machine address modified
+        writeByte model address modified
 
-    let writeWord machine address value =
+    let writeWord model address value =
         let hi = (value >>> 8) &&& 0xFF
         let lo = value &&& 0xFF
-        let machine' = writeByte machine (getHiByteAddress address) hi
-        writeByte machine' (getLoByteAddress address) lo
+        let model' = writeByte model (getHiByteAddress address) hi
+        writeByte model' (getLoByteAddress address) lo
 
-    let version machine = 
-        let version = readByte machine VersionAddress
+    let version model = 
+        let version = readByte model VersionAddress
         match version with
         | 1 -> Version1
         | 2 -> Version2
@@ -69,39 +69,40 @@ module Machine =
         | 4 -> Version4
         | 5 -> Version5
         | 6 -> Version6
-        | _ -> failwithf "Unrecognized machine version: %d" version
+        | _ -> failwithf "Unrecognized model version: %d" version
 
-    let dictionaryAddress machine = 
-        DictionaryAddress (readWord machine DictionaryPointer)
+    let dictionaryAddress model = 
+        DictionaryAddress (readWord model DictionaryPointer)
 
-    let objectTableAddress machine = 
-        ObjectTableAddress (readWord machine ObjectTablePointer)
+    let objectTableAddress model = 
+        ObjectTableAddress (readWord model ObjectTablePointer)
 
-    let staticMemoryAddress machine = 
-        StaticMemoryAddress (readWord machine StaticMemoryPointer)
+    let staticMemoryAddress model = 
+        StaticMemoryAddress (readWord model StaticMemoryPointer)
 
-    let abbreviationsTableAddress machine = 
-        AbbreviationsTableAddress (readWord machine AbbreviationsTablePointer)
+    let abbreviationsTableAddress model = 
+        AbbreviationsTableAddress (readWord model AbbreviationsTablePointer)
 
-    let globalVariablesTableAddress machine = 
-        GlobalVariablesTableAddress (readWord machine GlobalVariablesTablePointer)
+    let globalVariablesTableAddress model = 
+        GlobalVariablesTableAddress (readWord model GlobalVariablesTablePointer)
 
-    let isVersion4OrLater machine =
-        match (version machine) with
+    let isVersion4OrLater model =
+        match (version model) with
         | Version1 | Version2 | Version3 -> false
         | _ -> true
 
-    let create dynamicMemory staticMemory =
+    let make dynamicMemory staticMemory =
         { dynamicMemory = dynamicMemory; staticMemory = staticMemory }
 
     module Helpers = 
 
-        let createFromBytes bs =
-            let len = Array.length bs
+        let createFromBytes source =
+            let buffer = Memory.Static.make source
+            let len = Memory.Static.length buffer
             if len >= HeaderSize then
                 let staticMemoryBase = 
-                    let hi = dereferenceByte bs (getHiByteAddress StaticMemoryPointer)
-                    let lo = dereferenceByte bs (getLoByteAddress StaticMemoryPointer)
+                    let hi = Memory.Static.read buffer (getHiByteAddress StaticMemoryPointer)
+                    let lo = Memory.Static.read buffer (getLoByteAddress StaticMemoryPointer)
                     bytesToWord (hi, lo)
                 if (staticMemoryBase <= len) then
                     let dynamicMemory', staticMemory' = subdivideBytes bs (ByteAddress (staticMemoryBase-1))

@@ -24,7 +24,7 @@
     <Compile Include="Type.fs" />
     <Compile Include="Utility.fs" />
     <Compile Include="Memory.fs" />
-    <Compile Include="Machine.fs" />
+    <Compile Include="Model.fs" />
     <Compile Include="Globals.fs" />
     <Compile Include="Instruction.fs" />
     <Compile Include="Text.fs" />
