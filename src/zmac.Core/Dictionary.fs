@@ -3,6 +3,7 @@ namespace Zmac.Core
 open Type
 open Utility
 open Machine
+open Machine.Memory
 open Text
 
 module Dictionary =
@@ -41,15 +42,15 @@ module Dictionary =
     let wordSeparatorAddress machine i = 
         incrementByteAddressBy i (ByteAddress (wordSeparatorsCountAddress machine))
 
-    let readWordSeparatorsCount machine =
+    let wordSeparatorsCount machine =
         readByte machine (ByteAddress (wordSeparatorsCountAddress machine))
 
-    let readWordSeparators machine =
-        [|1..readWordSeparatorsCount machine|]
+    let wordSeparators machine =
+        [|1..wordSeparatorsCount machine|]
         |> Array.map (fun i -> char (readByte machine (wordSeparatorAddress machine i)))
     
     let dictionaryEntryLengthAddress machine =
-        incrementByteAddressBy (readWordSeparatorsCount machine) (wordSeparatorAddress machine 1) 
+        incrementByteAddressBy (wordSeparatorsCount machine) (wordSeparatorAddress machine 1) 
 
     let dictionaryEntryLength machine =
         readByte machine (dictionaryEntryLengthAddress machine)
@@ -74,12 +75,12 @@ module Dictionary =
         else
             failwithf "Invalid dictionary entry reference: %d. The valid range is %d to %d." i 1 (dictionaryEntryCount machine)            
 
-    let readDictionaryEntry machine i = 
+    let dictionaryEntry machine i = 
         readZString machine (dictionaryEntryAddress machine i)
 
     let dictionaryEntryList machine =
         [1..dictionaryEntryCount machine]
-        |> Seq.map (DictionaryEntry >> readDictionaryEntry machine)
+        |> Seq.map (DictionaryEntry >> dictionaryEntry machine)
 
     let showDictionary machine =
         machine

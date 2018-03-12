@@ -3,6 +3,7 @@ namespace Zmac.Core
 open Type
 open Utility
 open Machine
+open Machine.Memory
 
 module Object =
 

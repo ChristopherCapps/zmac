@@ -3,6 +3,7 @@ namespace Zmac.Core
 open Type
 open Utility
 open Machine
+open Machine.Memory
 
 (*
     Globals are 2-byte words numbered from $10 to $FF, so there are 240 values. They

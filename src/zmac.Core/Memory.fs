@@ -11,47 +11,55 @@ module Memory =
         let make source = 
             T (Array.copy source)
 
-        let read (T buffer) address =
-            if (isAddressInRange address (Array.length buffer)) then
-                let (ByteAddress address') = address
-                buffer.[address']
-            else
-                failwithf "%A is out of range for the buffer given" address
-
         let length (T buffer) =
             Array.length buffer
 
-        let range source loAddress hiAddress =
-            let len = length source
-            if (isAddressInRange loAddress len) then
-                let hiAddress' = 
-                    match hiAddress with
-                    | Some (ByteAddress hiAddress') -> 
-                        if (isAddressInRange hiAddress len) then hiAddress'
-                        else failfwithf "%A is out of range for the buffer given" hiAddress
-                    | None -> 
-                        len-1
-                let (T buffer) = source
+        let isAddressInRange memory address =
+            Zmac.Core.Utility.isAddressInRange address (length memory)
 
-                
-
-        /// Divides the given static memory into two blocks at the specified address, with the first block containing the address.
-        let subdivide ((T buffer) as source) ((ByteAddress address) as address') =
-            if isAddressInRange address ((length source) - 1) then
-                let (ByteAddress address') = address
-                let (T buffer) = source
-                (make buffer.[..address']), (make buffer.[address'+1..])
+        let read memory address =
+            if (isAddressInRange memory address) then
+                let (ByteAddress offset) = address
+                let (T buffer) = memory
+                buffer.[offset]
             else
-                failwithf "%A is out of range for the buffer given" address   
+                failwithf "%A is out of range for the memory given" address
+
+        let highestAddress memory =            
+            let len = length memory
+            if len = 0 then failwithf "The given memory has no content"
+            ByteAddress (len - 1)
+
+        let range memory lowAddress highAddress =
+            if not (isAddressInRange memory lowAddress) then
+                failwithf "Low address (%A) is out of range for the memory given" lowAddress
+            if not (isAddressInRange memory highAddress) then
+                failwithf "High address (%A) is out of range for the memory given" highAddress
+            
+            // TODO: This is nicely functional & uncluttered but not our most performant option, so consider a more direct approach
+            byteAddressRange lowAddress highAddress
+            |> Array.map (read memory)
+            |> make
+
+        /// Divides the given static memory into two blocks at the specified address, with the first block containing the address itself.
+        let split memory splitAddress =
+            let lowRange = range memory (ByteAddress 0) splitAddress
+            let highRange = 
+                match (highestAddress memory) with
+                | highestAddress when splitAddress = highestAddress -> 
+                    make Array.empty
+                | highestAddress -> 
+                    range memory (incrementByteAddress splitAddress) highestAddress
+            lowRange, highRange
 
     module Dynamic = 
 
         module Updates =
             type T = T of Map<int,byte>
 
-            let make = T Map.empty
+            let make map = T map
 
-            let empty = make
+            let empty = make Map.empty
 
             let read (T updates) (ByteAddress address) =
                 updates 
@@ -60,12 +68,12 @@ module Memory =
             let write (T updates) (ByteAddress address) value =
                 updates 
                 |> Map.add address value 
-                |> T
+                |> make
 
         type T = { source: Static.T; updates: Updates.T }
 
         let make source =
-            { source = Static.make source; updates = Updates.make }
+            { source = source; updates = Updates.empty }
 
         let length memory =
             Static.length memory.source

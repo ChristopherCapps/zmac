@@ -3,6 +3,7 @@ namespace Zmac.Core
 open Type
 open Utility
 open Machine
+open Machine.Memory
 
 module Text =
 
@@ -36,7 +37,7 @@ module Text =
         | A2 -> ch > InsertZsciiCode // 6
 
     // Fetches the character associated with the given code in the provided Alphabet
-    let readAlphabetCharacterIn (Alphabet (_, chars)) code = 
+    let lookupAlphabetCharacterIn (Alphabet (_, chars)) code = 
         let index = code - FirstZCharacterIndex // the code is offset from the Alphabet index
         if index >= 0 && index < 26 then
             chars.[index]
@@ -94,7 +95,6 @@ module Text =
     // TODO: Consider refactoring such that we read a single ZChar in a separate function; note
     // this will complicate the recursive abbreviation insertion
     let rec readZString machine address =
-        //let version = version machine
 
         let readAbbreviationAsChars abbreviationSet abbreviationIndex =
             let abbreviation = Abbreviation (32 * (abbreviationSet - 1) + abbreviationIndex)
@@ -103,7 +103,6 @@ module Text =
             |> Seq.toList
         
         let rec loop zcodes acc =
-            // We've processed all the input codes and are
             //printfn "In: %A, Acc: %A" zstr acc
             match zcodes with
             | [] -> acc
@@ -122,12 +121,12 @@ module Text =
             // ZCode sequence to insert a character from A1, but only if 'ch' is an actual character and not a special instruction
             | shiftAlphabetOnce::ch::zs when shiftAlphabetOnce = ShiftOnceToA1 && (ch |> isAlphabetCharacterIn A1) -> 
                 //printfn "[A1:%d]" z2
-                loop zs (acc @ [readAlphabetCharacterIn AlphabetA1 ch])
+                loop zs (acc @ [lookupAlphabetCharacterIn AlphabetA1 ch])
 
             // ZCode sequence to insert a character from A2, but only if 'ch' is an actual character and not a special instruction
             | shiftAlphabetOnce::ch::zs when shiftAlphabetOnce = ShiftOnceToA2 && (ch |> isAlphabetCharacterIn A2) -> 
                 //printfn "[A2:%d]" z2
-                loop zs (acc @ [readAlphabetCharacterIn AlphabetA2 ch])
+                loop zs (acc @ [lookupAlphabetCharacterIn AlphabetA2 ch])
 
             // ZCode sequence to insert a ZSCII character given hi- and lo-order 5-bit chunks
             // TODO: Need to support an alternate alphabet table for V5 and later
@@ -152,7 +151,7 @@ module Text =
             // Finally we have a normal request to insert a character from the default A0
             | ch::zs when ch |> isAlphabetCharacterIn A0 -> 
                 //printfn "[A0:%d]" z; 
-                loop zs (acc @ [readAlphabetCharacterIn AlphabetA0 ch])
+                loop zs (acc @ [lookupAlphabetCharacterIn AlphabetA0 ch])
 
             // Catch-all for missed patterns that should (hopefully) be ignored
             | _::zs -> 

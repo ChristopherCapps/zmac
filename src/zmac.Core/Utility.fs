@@ -11,6 +11,9 @@ module Utility =
     let isAddressInRange (ByteAddress address) length =
         address >= 0 && address < length
 
+    let isNotAddressInRange address length = 
+        not (isAddressInRange address length)
+
     let incrementByteAddressBy count (ByteAddress address) =
         ByteAddress (address+count)
 
@@ -28,6 +31,13 @@ module Utility =
 
     let incrementWordAddress = 
         incrementWordAddressBy 1
+
+    /// Creates an array of ByteAddress values across the range provided, from lowest to highest, which can be used to drive a pipeline.
+    let byteAddressRange (ByteAddress lowOffset) (ByteAddress highOffset) =
+        if (highOffset < lowOffset) then 
+            failwithf "High address (%A) must not be less than low address (%A)" highOffset lowOffset
+        [|lowOffset..highOffset|]
+        |> Array.map ByteAddress
 
     let getHiByteAddress (WordAddress address) =
         ByteAddress address
@@ -62,21 +72,21 @@ module Utility =
 
     let byteToChar (b:byte) = char b
 
-    // Divides the given array into two arrays at the specified address,
-    // with the first array containing the address.
-    let subdivideBytes (bs:byte array) address = 
-        if (isAddressInRange address ((Array.length bs) - 1)) then
-            let (ByteAddress address') = address
-            bs.[..address'], bs.[address'+1..]
-        else
-            failwithf "%A is out of range for the buffer given" address   
+    // // Divides the given array into two arrays at the specified address,
+    // // with the first array containing the address.
+    // let subdivideBytes (bs:byte array) address = 
+    //     if (isAddressInRange address ((Array.length bs) - 1)) then
+    //         let (ByteAddress address') = address
+    //         bs.[..address'], bs.[address'+1..]
+    //     else
+    //         failwithf "%A is out of range for the buffer given" address   
 
-    let dereferenceByte (bs:byte array) address =
-        if (isAddressInRange address (Array.length bs)) then
-            let (ByteAddress address') = address
-            bs.[address']
-        else
-            failwithf "%A is out of range for the buffer given" address   
+    // let dereferenceByte (bs:byte array) address =
+    //     if (isAddressInRange address (Array.length bs)) then
+    //         let (ByteAddress address') = address
+    //         bs.[address']
+    //     else
+    //         failwithf "%A is out of range for the buffer given" address   
 
     let charSeqToString (cs:char seq) =
         cs
