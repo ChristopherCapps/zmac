@@ -1,9 +1,8 @@
 namespace Zmac.Core
 
-open Zmac.Core.Type
+open Type
 
 module Instruction =
-    
     type OpcodeForm =
       | Long
       | Short
@@ -18,7 +17,7 @@ module Instruction =
 
     let decodeVariable n =
       if n = 0 then Stack
-      else if n >= Locals.FirstLocalVariable && n <= Locals.LastLocalVariable then Local (LocalVariable n)
+      else if n >= Zmac.Core.Locals.FirstLocalVariable && n <= Locals.LastLocalVariable then Local (LocalVariable n)
       else Global (GlobalVariable n)
 
     let encodeVariable variable =
