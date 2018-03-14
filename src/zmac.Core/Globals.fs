@@ -43,12 +43,12 @@ module Globals =
     let writeGlobalVar machine n value =
         writeWord machine (globalVariableAddress machine n) value
 
-    let globalVarArray machine =
+    let allGlobalVariables machine =
         [|FirstGlobalVariable..LastGlobalVariable|]
         |> Array.map (GlobalVariable >> readGlobalVar machine)
 
     let showGlobalVariables machine =
         machine
-        |> globalVarArray
-        |> Seq.mapi (fun i var -> sprintf "[%3d] %-7d" (i+0x10) var)
-        |> Seq.iter (fun line -> printfn "%s" line)
+        |> allGlobalVariables
+        |> Array.mapi (fun i var -> sprintf "[%3d] %-7d" (i+0x10) var)
+        |> Array.iter (fun line -> printfn "%s" line)

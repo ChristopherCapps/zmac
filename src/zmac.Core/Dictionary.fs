@@ -65,27 +65,39 @@ module Dictionary =
         incrementWordAddressBy 1 (dictionaryEntryCountAddress machine) |> wordAddressToByteAddress
 
     let isDictionaryEntryInRange machine (DictionaryEntry i) =
-        i >= 1 && i <= dictionaryEntryCount machine
+        i >= 1 && i <= (dictionaryEntryCount machine)
 
     let dictionaryEntryAddress machine (DictionaryEntry i) =
         if isDictionaryEntryInRange machine (DictionaryEntry i) then
             let (ByteAddress address) = dictionaryEntriesAddress machine
             let offset = (i-1) * dictionaryEntryLength machine
-            ZStringAddress (address + offset)
+            DictionaryEntryAddress (address + offset)
         else
             failwithf "Invalid dictionary entry reference: %d. The valid range is %d to %d." i 1 (dictionaryEntryCount machine)            
 
-    let dictionaryEntry machine i = 
-        readZString machine (dictionaryEntryAddress machine i)
+    let dictionaryEntryWord machine i = 
+        let (DictionaryEntryAddress dictionaryEntryBase) = dictionaryEntryAddress machine i
+        readZString machine (ZStringAddress dictionaryEntryBase)
 
-    let dictionaryEntryList machine =
-        [1..dictionaryEntryCount machine]
-        |> Seq.map (DictionaryEntry >> dictionaryEntry machine)
+    // let dictionaryEntryData machine i =
+    //     let (DictionaryEntryAddress dictionaryEntryBase) = dictionaryEntryAddress machine i
+    //     let dictionaryEntryDataAddress = incrementByteAddressBy (dictionaryEntryLength machine) dictionaryEntryBase
+    //     // need to fetch bytes
+
+    let allDictionaryEntries machine =
+        let entryCount = dictionaryEntryCount machine
+        [|1..entryCount|]
+        |> Array.map DictionaryEntry
+
+    let allDictionaryEntryWords machine =
+        machine
+        |> allDictionaryEntries
+        |> Array.map (dictionaryEntryWord machine)
 
     let showDictionary machine =
         machine
-        |> dictionaryEntryList
-        |> Seq.mapi (fun i word -> sprintf "[%4d] %10s  " (i+1) word)
-        |> Seq.chunkBySize 4
-        |> Seq.map (Seq.fold (+) System.String.Empty)
-        |> Seq.iter (fun line -> printfn "%s" line)
+        |> allDictionaryEntryWords
+        |> Array.mapi (fun i word -> sprintf "[%4d] %10s  " (i+1) word)
+        |> Array.chunkBySize 4
+        |> Array.map (Seq.fold (+) System.String.Empty)
+        |> Array.iter (fun line -> printfn "%s" line)

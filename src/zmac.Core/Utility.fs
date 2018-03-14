@@ -33,7 +33,7 @@ module Utility =
         incrementWordAddressBy 1
 
     /// Creates an array of ByteAddress values across the range provided, from lowest to highest, which can be used to drive a pipeline.
-    let byteAddressRange (ByteAddress lowOffset) (ByteAddress highOffset) =
+    let rangeOfByteAddresses ((ByteAddress lowOffset), (ByteAddress highOffset)) =
         if (highOffset < lowOffset) then 
             failwithf "High address (%A) must not be less than low address (%A)" highOffset lowOffset
         [|lowOffset..highOffset|]

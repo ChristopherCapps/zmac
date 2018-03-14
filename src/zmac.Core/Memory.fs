@@ -8,8 +8,9 @@ module Memory =
     module Static =
         type T = T of byte array
 
-        let make source = 
-            T (Array.copy source)
+        let make = Array.copy >> T
+
+        let empty = T [||]
 
         let length (T buffer) =
             Array.length buffer
@@ -36,10 +37,11 @@ module Memory =
             if not (isAddressInRange memory highAddress) then
                 failwithf "High address (%A) is out of range for the memory given" highAddress
             
-            // TODO: This is nicely functional & uncluttered but not our most performant option, so consider a more direct approach
-            byteAddressRange lowAddress highAddress
+            // TODO: This is functional & uncluttered but not our most performant option, so consider a more direct approach
+            (lowAddress, highAddress)
+            |> rangeOfByteAddresses
             |> Array.map (read memory)
-            |> make
+            |> T
 
         /// Divides the given static memory into two blocks at the specified address, with the first block containing the address itself.
         let split memory splitAddress =
@@ -47,7 +49,7 @@ module Memory =
             let highRange = 
                 match (highestAddress memory) with
                 | highestAddress when splitAddress = highestAddress -> 
-                    make Array.empty
+                    empty
                 | highestAddress -> 
                     range memory (incrementByteAddress splitAddress) highestAddress
             lowRange, highRange
@@ -57,7 +59,7 @@ module Memory =
         module Updates =
             type T = T of Map<int,byte>
 
-            let make map = T map
+            let make = T
 
             let empty = make Map.empty
 
@@ -82,10 +84,8 @@ module Memory =
             let length = length memory
             if isAddressInRange address length then
                 match (Updates.read memory.updates address) with
-                | Some b ->
-                    b
-                | None ->
-                    Static.read memory.source address
+                | Some b -> b
+                | None -> Static.read memory.source address
             else
                 failwithf "%A is invalid for memory of length %d" address length
 
@@ -93,10 +93,8 @@ module Memory =
             let length = length memory
             if isAddressInRange address length then
                 match (read memory address) with
-                | b when b = value -> 
-                    memory
-                | _ -> 
-                    { memory with updates = (Updates.write memory.updates address value) }
+                | b when b = value -> memory
+                | _ -> { memory with updates = (Updates.write memory.updates address value) }
             else
                 failwithf "%A is invalid for memory of length %d" address length
 

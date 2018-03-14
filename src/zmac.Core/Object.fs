@@ -20,8 +20,10 @@ module Object =
     let objectAttributeCount machine =
         if (isVersion4OrLater machine) then 48 else 32
 
-    let objectAttributeRange machine =
-        seq { 0..(objectAttributeCount machine)-1 }
+    let allObjectAttributes machine =
+        let lastAttribute = (objectAttributeCount machine)-1
+        [|0..lastAttribute|]
+        |> Array.map ObjectAttribute
 
     let objectAttributeSizeBytes machine =
         if (isVersion4OrLater machine) then 6 else 4
@@ -70,7 +72,9 @@ module Object =
         loop 0xFFFF obj1PropertiesPtr (2, obj1PropertiesPtr+WordLength)
 
     let allObjects machine =
-        [1..(objectCount machine)] |> Seq.map Object
+        let count = objectCount machine
+        [|1..count|] 
+        |> Array.map Object
 
     let objectAddress machine (Object obj) =
         if obj < 1 || obj > (objectCount machine) then
@@ -107,10 +111,10 @@ module Object =
     let clearObjectAttribute machine obj attribute = 
         writeObjectAttribute machine obj attribute false
 
-    let objectAttributeList machine obj =
+    let readAllObjectAttributes machine obj =
         machine
-        |> objectAttributeRange
-        |> Seq.map (ObjectAttribute >> (readObjectAttribute machine obj))
+        |> allObjectAttributes
+        |> Array.map (readObjectAttribute machine obj)
 
     let readObjectNumber machine (ObjectNumberAddress address) =
         if (isVersion4OrLater machine) then
@@ -208,8 +212,9 @@ module Object =
             readObjectChild machine obj
         let attributes = 
             machine
-            |> objectAttributeRange
-            |> Seq.choose (fun i -> if (isObjectAttributeSet machine obj (ObjectAttribute i)) then Some i else None)
+            |> allObjectAttributes
+            |> Array.choose (fun attr -> if (isObjectAttributeSet machine obj attr) then Some attr else None)
+            |> Array.map (fun (ObjectAttribute i) -> i)
          
         sprintf "%5d. %-35s[Parent: %5d] [Sibling: %5d] [Child: %5d] [Attributes: %A]" 
             n shortName parent sibling child attributes
@@ -220,5 +225,5 @@ module Object =
     let showObjects machine =
         machine
         |> allObjects
-        |> Seq.map (fun obj -> objectToString machine obj)
-        |> Seq.iter (printfn "%s")
+        |> Array.map (objectToString machine)
+        |> Array.iter (printfn "%s")

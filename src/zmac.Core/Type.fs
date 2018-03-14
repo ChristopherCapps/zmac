@@ -32,6 +32,8 @@ module Type =
 
     type DictionaryAddress = DictionaryAddress of int
     type DictionaryEntry = DictionaryEntry of int
+    type DictionaryEntryAddress = DictionaryEntryAddress of int
+    
     type ZStringAddress = ZStringAddress of int
 
     type AbbreviationsTableAddress = AbbreviationsTableAddress of int
