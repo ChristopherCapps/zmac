@@ -63,15 +63,34 @@ module Instruction =
 
     (****** Instruction decoding ******)
 
-    let decodeOpcodeForm machine address =
-      let opcode = readByte machine address
-      match (readBits BitNumber7 BitCount2 opcode) with
-        | 0x11 -> Variable
-        | 0x10 -> Short
-        | 0xBE when (version machine) >= Version5 -> Extended
-        | _ -> Long
+    let instruction machine (InstructionAddress address) = 
+      let opcode = readBits BitNumber3 BitCount4 opcode      
 
-    //let decodeOperandCount machine address =
+      let opcodeForm =
+        match (readBits BitNumber7 BitCount2 opcode) with
+          | 0x11 -> Variable
+          | 0x10 -> Short
+          | 0xBE when (version machine) >= Version5 -> Extended
+          | _ -> Long
+
+      let operandCount =
+        match opcodeForm with
+        | Short -> 
+            match (readBits BitNumber5 BitCount2 opcode) with
+            | 0x11 -> OP0
+            | _ -> OP1
+        | Long -> OP2
+        | Variable -> 
+            match (readBit BitNumber5 opcode) with
+            | false -> OP2
+            | true -> VAR
+        | Extended -> VAR
+
+      let opcode' =
+        match operandForm with
+        | Short -> readBits BitNumber3 BitCount4 opcode
+        | Long | Variable -> readBits BitNumber4 BitCount5 opcode
+        | Extended -> readByte machine (incrementByteAddress (ByteAddress address))
 
 
     (****** Variable operand manipulations ******)

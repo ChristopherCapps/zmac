@@ -57,6 +57,8 @@ module Type =
     type ObjectAttributeAddress = ObjectAttributeAddress of int * BitNumber
     type ObjectPropertiesAddress = ObjectPropertiesAddress of int
 
+    type InstructionAddress = InstructionAddress of int
+
     let BitNumber0 = BitNumber 0
     let BitNumber1 = BitNumber 1
     let BitNumber2 = BitNumber 2
