@@ -76,6 +76,14 @@ module Instruction =
 
     // ****** Instruction decoding ******
 
+    let decodeOperand operandType =
+      match operandType with
+      | 0b00 -> LargeOperand
+      | 0b01 -> SmallOperand
+      | 0b10 -> VariableOperand
+      | 0b11 -> Omitted
+      | _ -> failwithf "Unexpected operand type: %d" operandType
+
     let instruction machine (InstructionAddress address) = 
       let instruction = readByte machine (ByteAddress address)
 
@@ -119,6 +127,17 @@ module Instruction =
           else operation'
         else failwithf "Illegal opcode specified: opcode count %A, opcode %A" operandCount opcodeNumber
       
+      let operands =
+        match opcodeForm, operandCount with
+        | ShortForm, _ -> 
+          let operandType = decodeOperand (readBits BitNumber5 BitCount2 opcodeNumber)
+          match operandType with
+          | Omitted -> Array.empty
+          | _ -> [| operandType |]
+        | LongForm, _ -> 
+          let operandTypes = 
+            readByte machine (increaseByteAddress address)
+            
       { 
         opcode = opcode
         form = opcodeForm
