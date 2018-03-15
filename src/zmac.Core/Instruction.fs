@@ -76,7 +76,7 @@ module Instruction =
 
     // ****** Instruction decoding ******
 
-    let decodeOperand operandType =
+    let decodeOperandType operandType =
       match operandType with
       | 0b00 -> LargeOperand
       | 0b01 -> SmallOperand
@@ -85,7 +85,8 @@ module Instruction =
       | _ -> failwithf "Unexpected operand type: %d" operandType
 
     let instruction machine (InstructionAddress address) = 
-      let instruction = readByte machine (ByteAddress address)
+      let baseAddress = ByteAddress address
+      let instruction = readByte machine baseAddress
 
       let opcodeForm =
         match (readBits BitNumber7 BitCount2 instruction) with
@@ -111,7 +112,7 @@ module Instruction =
         match opcodeForm with
         | ShortForm -> readBits BitNumber3 BitCount4 instruction
         | LongForm | VariableForm -> readBits BitNumber4 BitCount5 instruction
-        | ExtendedForm -> readByte machine (incrementByteAddress (ByteAddress address))
+        | ExtendedForm -> readByte machine (incrementByteAddress baseAddress)
 
       let opcode =
         let operandFamily = 
@@ -128,20 +129,47 @@ module Instruction =
         else failwithf "Illegal opcode specified: opcode count %A, opcode %A" operandCount opcodeNumber
       
       let operands =
-        match opcodeForm, operandCount with
-        | ShortForm, _ -> 
-          let operandType = decodeOperand (readBits BitNumber5 BitCount2 opcodeNumber)
-          match operandType with
-          | Omitted -> Array.empty
-          | _ -> [| operandType |]
-        | LongForm, _ -> 
-          let operandTypes = 
-            readByte machine (increaseByteAddress address)
-            
+        let operandsOffset, operandTypes = 
+          match opcodeForm with
+          | ShortForm ->         
+            let operandType = decodeOperandType (readBits BitNumber5 BitCount2 opcodeNumber) // Bits 4&5 give type
+            match operandType with
+            | Omitted -> None, Array.empty
+            | _ -> Some (address+1), [| operandType |]
+          | LongForm -> 
+            Some (address+1),
+              [| readBits BitNumber6 BitCount1 opcodeNumber; readBits BitNumber5 BitCount1 opcodeNumber |]
+              |> Array.map (function
+                  | 0 -> SmallOperand
+                  | _ -> VariableOperand // Can only be 1
+                 )
+          | ExtendedForm | VariableForm -> 
+            let offset, encodedOperandTypes, operandTypeOffsets = 
+              if opcode = EXT_12 || opcode = EXT_26 then // double VAR, up to 8 operands
+                Some (address+4), readWord machine (WordAddress (address+2)), [| 15; 13; 11; 9; 7; 5; 3; 1 |]
+              else // single VAR, up to 4 operands
+                let offset = if opcodeForm = ExtendedForm then 3 else 2
+                Some (address+offset), readByte machine (ByteAddress (address+1)), [| 7; 5; 3; 1 |]             
+            offset,
+              operandTypeOffsets          
+              |> Array.map (fun i -> readBits (BitNumber i) BitCount2 encodedOperandTypes |> decodeOperandType)
+              |> Array.filter (((=) Omitted) >> not)
+
+        match operandsOffset with
+        | Some offset -> 
+            let rec loop operandTypes acc offset =
+              match operandTypes with
+              | [||] -> acc
+              | [|operandType|]::ts -> 
+                  let operand, size = decodeOperand operandType offset
+                  loop ts acc@[|operand|] (offset+size)
+            loop operandTypes Array.empty offset
+        | None -> Array.empty
+
       { 
         opcode = opcode
         form = opcodeForm
-        operands = [||]
+        operands = operands
         isBranch = false
         isStore = false
         isText = false
