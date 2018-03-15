@@ -30,6 +30,11 @@ module Text =
 
     let InsertAbbreviationRequest = [InsertAbbreviationFromSet1; InsertAbbreviationFromSet2; InsertAbbreviationFromSet3]
 
+    // These define the structure of a double-byte word representing 3 Z-Codes
+    let ZCodeOffsets        = [ BitNumber14; BitNumber9; BitNumber4 ]
+    let ZStringTerminator   = BitNumber15
+    let ZCodeLength         = BitCount5
+
     // Simple helper for internal use that makes matching operations clearer
     let isAlphabetCharacterIn alphabet ch = 
         match alphabet with
@@ -39,21 +44,12 @@ module Text =
     // Fetches the character associated with the given code in the provided Alphabet
     let lookupAlphabetCharacterIn (Alphabet (_, chars)) code = 
         let index = code - FirstZCharacterIndex // the code is offset from the Alphabet index
-        if index >= 0 && index < 26 then
-            chars.[index]
-        else
-            failwithf "Illegal range for Alphabet character index: %d" index
+        if index >= 0 && index < 26 then chars.[index]
+        else failwithf "Illegal range for Alphabet character index: %d" index
 
     // At the given address, reads encoded characters until a terminator bit is set, returning the
     // ordered list of codes. This sequence of codes must be converted to Z-Characters.
     let readZCodeSeq machine (ZStringAddress address) =
-
-        // These define the structure of a double-byte word representing 3 Z-Codes; they are 
-        // only relevant for parsing the sequence of codes and so are declared here
-        let ZCodeOffsets        = [ BitNumber10; BitNumber5; BitNumber0 ]
-        let ZStringTerminator   = BitNumber15
-        let ZCodeLength         = BitCount5
-
         // Recursively parse and collect zcodes from the given address until <eos> bit is set
         let rec loop addr acc =
             let word = readWord machine addr
@@ -62,10 +58,8 @@ module Text =
                 ZCodeOffsets
                 |> List.map (fun offset -> readBits offset ZCodeLength word)
                 |> List.append acc
-            if isEndOfString then 
-                zcodes
-            else 
-                loop (incrementWordAddress addr) zcodes                
+            if isEndOfString then zcodes
+            else loop (incrementWordAddress addr) zcodes                
         loop (WordAddress address) []
 
     // Given the hi- and lo-order 5-bit code comprising a ZSCII character, returns the mapped character.

@@ -7,13 +7,13 @@ open Machine.Memory
 
 module Instruction =
 
-    (****** Types that comprise a complete Z-machine instructions ******)
+    // ****** Types that comprise a complete Z-machine instructions ******
 
     type OpcodeForm =
-      | Long
-      | Short
-      | Variable
-      | Extended
+      | LongForm
+      | ShortForm
+      | VariableForm
+      | ExtendedForm
 
     type OperandType =
       | LargeOperand
@@ -22,10 +22,23 @@ module Instruction =
       | Omitted
 
     type OperandCount =
-      | OP0
-      | OP1
-      | OP2
-      | VAR
+      | ZeroOperands
+      | OneOperand
+      | TwoOperands
+      | VariableOperands
+
+    type Operand =
+      | Constant of int
+      | Variable of Variable
+
+    type T = {
+      opcode: OpCode
+      form: OpcodeForm
+      operands: OperandType array
+      isBranch: bool
+      isStore: bool
+      isText: bool
+    }
 
     (* The tables which follow are maps from the opcode identification number
        to the opcode type; the exact order matters. *)
@@ -61,39 +74,61 @@ module Instruction =
       EXT_24;  EXT_25;  EXT_26;  EXT_27;  EXT_28;  EXT_29;  ILLEGAL; ILLEGAL 
     |]
 
-    (****** Instruction decoding ******)
+    // ****** Instruction decoding ******
 
     let instruction machine (InstructionAddress address) = 
-      let opcode = readBits BitNumber3 BitCount4 opcode      
+      let instruction = readByte machine (ByteAddress address)
 
       let opcodeForm =
-        match (readBits BitNumber7 BitCount2 opcode) with
-          | 0x11 -> Variable
-          | 0x10 -> Short
-          | 0xBE when (version machine) >= Version5 -> Extended
-          | _ -> Long
+        match (readBits BitNumber7 BitCount2 instruction) with
+          | 0b11 -> VariableForm
+          | 0b10 -> ShortForm
+          | 0xBE when (version machine) >= Version5 -> ExtendedForm
+          | _ -> LongForm
 
       let operandCount =
         match opcodeForm with
-        | Short -> 
-            match (readBits BitNumber5 BitCount2 opcode) with
-            | 0x11 -> OP0
-            | _ -> OP1
-        | Long -> OP2
-        | Variable -> 
-            match (readBit BitNumber5 opcode) with
-            | false -> OP2
-            | true -> VAR
-        | Extended -> VAR
+        | ShortForm -> 
+            match (readBits BitNumber5 BitCount2 instruction) with
+            | 0b11 -> ZeroOperands
+            | _ -> OneOperand
+        | LongForm -> TwoOperands
+        | VariableForm -> 
+            match (readBit BitNumber5 instruction) with
+            | false -> TwoOperands
+            | true -> VariableOperands
+        | ExtendedForm -> VariableOperands
 
-      let opcode' =
-        match operandForm with
-        | Short -> readBits BitNumber3 BitCount4 opcode
-        | Long | Variable -> readBits BitNumber4 BitCount5 opcode
-        | Extended -> readByte machine (incrementByteAddress (ByteAddress address))
+      let opcodeNumber =
+        match opcodeForm with
+        | ShortForm -> readBits BitNumber3 BitCount4 instruction
+        | LongForm | VariableForm -> readBits BitNumber4 BitCount5 instruction
+        | ExtendedForm -> readByte machine (incrementByteAddress (ByteAddress address))
 
+      let opcode =
+        let operandFamily = 
+          match operandCount with
+          | ZeroOperands -> ZeroOperandOpCodes
+          | OneOperand -> OneOperandOpCodes
+          | TwoOperands -> TwoOperandOpCodes
+          | VariableOperands -> VariableOperandOpCodes
+        if opcodeNumber >= 0 && opcodeNumber < operandFamily.Length then 
+          let operation' = operandFamily.[opcodeNumber]
+          if operation' = ILLEGAL then 
+            failwithf "Illegal opcode specified: opcode count %A, opcode %A" operandCount opcodeNumber
+          else operation'
+        else failwithf "Illegal opcode specified: opcode count %A, opcode %A" operandCount opcodeNumber
+      
+      { 
+        opcode = opcode
+        form = opcodeForm
+        operands = [||]
+        isBranch = false
+        isStore = false
+        isText = false
+      }
 
-    (****** Variable operand manipulations ******)
+    // ****** Variable operand manipulations ******
 
     let decodeVariable n =
       if n = 0 then Stack
@@ -106,7 +141,7 @@ module Instruction =
       | Local (LocalVariable n) -> n
       | Global (GlobalVariable n) -> n
 
-    (* We match Inform's convention of numbering the locals and globals from zero *)
+    // We match Inform's convention of numbering the locals and globals from zero 
     let displayVariable variable =
       match variable with
       | Stack -> "sp"

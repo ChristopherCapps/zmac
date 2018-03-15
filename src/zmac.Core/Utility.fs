@@ -54,8 +54,12 @@ module Utility =
     let readBit (BitNumber n) word =
         ((word &&& (0x1 <<< n)) >>> n) = 1
 
+    /// Starting at the high bit, reads count bits from the given word and returns the result; that is, bits are read from rightmost to leftmost.
     let readBits (BitNumber high) (BitCount count) word =
-        (((0xff >>> (8-count)) <<< high) &&& word) >>> high
+        let shift = high - count + 1
+        // We assume that we only ever read at most 8 bits, so using a byte for a mask should suffice
+        let mask = 0xff >>> (8-count) 
+        (word >>> shift) &&& mask
 
     let writeBit (BitNumber n) word isSet =
         let mask = 0x1 <<< n
@@ -93,3 +97,6 @@ module Utility =
         |> Seq.toArray
         |> System.String
         |> string
+
+    let bin (tw: System.IO.TextWriter) value = 
+        tw.Write("{0}", System.Convert.ToString(int64 value, 2))

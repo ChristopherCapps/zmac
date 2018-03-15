@@ -87,7 +87,6 @@ module Type =
 
     type Version = Version1 | Version2 | Version3 | Version4 | Version5 | Version6
 
-    [<System.Diagnostics.CodeAnalysis.SuppressMessage("NameConventions", "IdentifiersMustNotContainUnderscores")>]
     type OpCode =
       | OP2_1   | OP2_2   | OP2_3   | OP2_4   | OP2_5   | OP2_6   | OP2_7
       | OP2_8   | OP2_9   | OP2_10  | OP2_11  | OP2_12  | OP2_13  | OP2_14  | OP2_15

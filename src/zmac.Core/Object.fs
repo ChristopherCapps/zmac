@@ -172,12 +172,13 @@ module Object =
 
     let readObjectProperties machine obj =
         let rec loop propAddr acc =
-            let size = readByte machine (ByteAddress propAddr)
+            let propAddr' = ByteAddress propAddr
+            let size = readByte machine propAddr'
             if size = 0 then acc else
             if (isVersion4OrLater machine) then
-                let propNum = readBits BitNumber0 BitCount6 size
+                let propNum = readBits BitNumber5 BitCount6 size // Bottom 6 bits
                 if (readBit BitNumber7 size) then                    
-                    let dataSize = readBits BitNumber0 BitCount6 (readByte machine (ByteAddress (propAddr+1)))
+                    let dataSize = readBits BitNumber5 BitCount6 (readByte machine (incrementByteAddress propAddr'))
                     let dataSize' = if dataSize = 0 then 64 else dataSize
                     let nextPropAddr = propAddr + 2 + dataSize'
                     loop nextPropAddr (acc@[(ObjectPropertyData (ObjectProperty propNum,
@@ -190,9 +191,9 @@ module Object =
                                                                  ObjectPropertyDataSize dataSize,
                                                                  ObjectPropertyDataAddress (propAddr + 1)))])                    
             else                
-                let dataSize =  (size / 32 + 1)
+                let dataSize =  (size / 32 + 1) // Same as top 3 bits, plus 1
                 let nextPropAddr = propAddr + 1 + dataSize
-                loop nextPropAddr (acc@[(ObjectPropertyData (ObjectProperty (size % 32), 
+                loop nextPropAddr (acc@[(ObjectPropertyData (ObjectProperty (size % 32), // Same as bottom 5 bits 
                                                              ObjectPropertyDataSize dataSize, 
                                                              ObjectPropertyDataAddress (propAddr + 1)))])
                                                                  
