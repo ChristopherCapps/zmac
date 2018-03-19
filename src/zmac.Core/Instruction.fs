@@ -76,51 +76,57 @@ module Instruction =
 
     // ****** Instruction decoding ******
 
-    let decodeOperandType operandType =
-      match operandType with
-      | 0b00 -> LargeOperand
-      | 0b01 -> SmallOperand
-      | 0b10 -> VariableOperand
-      | 0b11 -> Omitted
-      | _ -> failwithf "Unexpected operand type: %d" operandType
-
     let instruction machine (InstructionAddress address) = 
-      let baseAddress = ByteAddress address
-      let instruction = readByte machine baseAddress
+      let version = version machine
 
-      let opcodeForm =
+      ///////// OPERAND FORM
+      // Decode form of the opcode, stored in the high two bits
+      let opcodeForm address =
+        let instruction = readByte machine address
         match (readBits BitNumber7 BitCount2 instruction) with
           | 0b11 -> VariableForm
           | 0b10 -> ShortForm
-          | 0xBE when (version machine) >= Version5 -> ExtendedForm
+          | 0xBE when (version >= Version5) -> ExtendedForm
           | _ -> LongForm
 
-      let operandCount =
+      ///////// OPERAND COUNT
+      // Number of operands depends on form and instruction bits
+      let operandCount address opcodeForm =
+        let instruction = readByte machine address
         match opcodeForm with
+        // We have 1 or 2 operands in short form, with the type also represented
         | ShortForm -> 
             match (readBits BitNumber5 BitCount2 instruction) with
             | 0b11 -> ZeroOperands
-            | _ -> OneOperand
+            | _   -> OneOperand
+
+        // In long form we always have 2 operands
         | LongForm -> TwoOperands
+
+        // With variable form, we have either 2 or variable operands based on bit 5
         | VariableForm -> 
             match (readBit BitNumber5 instruction) with
             | false -> TwoOperands
             | true -> VariableOperands
+
+        // In extended form we always have variable operands
         | ExtendedForm -> VariableOperands
 
-      let opcodeNumber =
-        match opcodeForm with
-        | ShortForm -> readBits BitNumber3 BitCount4 instruction
-        | LongForm | VariableForm -> readBits BitNumber4 BitCount5 instruction
-        | ExtendedForm -> readByte machine (incrementByteAddress baseAddress)
-
-      let opcode =
+      ///////// OPCODE MAPPING
+      // Map the opcode number and operand count to a specific opcode type
+      let opcode address opcodeForm operandCount =
+        let instruction = readByte machine address
         let operandFamily = 
           match operandCount with
           | ZeroOperands -> ZeroOperandOpCodes
           | OneOperand -> OneOperandOpCodes
           | TwoOperands -> TwoOperandOpCodes
           | VariableOperands -> VariableOperandOpCodes
+        let opcodeNumber = 
+          match opcodeForm with
+          | ShortForm -> readBits BitNumber3 BitCount4 instruction
+          | LongForm | VariableForm -> readBits BitNumber4 BitCount5 instruction
+          | ExtendedForm -> readByte machine (incrementByteAddress address)
         if opcodeNumber >= 0 && opcodeNumber < operandFamily.Length then 
           let operation' = operandFamily.[opcodeNumber]
           if operation' = ILLEGAL then 
@@ -128,6 +134,51 @@ module Instruction =
           else operation'
         else failwithf "Illegal opcode specified: opcode count %A, opcode %A" operandCount opcodeNumber
       
+      let opcodeLength = function
+        | ExtendedForm -> 2
+        | _ -> 1
+
+      let decodeOperandType operandType =
+        match operandType with
+        | 0b00 -> LargeOperand
+        | 0b01 -> SmallOperand
+        | 0b10 -> VariableOperand
+        | 0b11 -> Omitted
+        | _ -> failwithf "Unexpected operand type: %d" operandType
+
+      let operandTypes address opcodeForm = 
+        match opcodeForm with
+        | ShortForm ->
+            let instruction = readByte machine address    
+            let operandType =
+              instruction 
+              |> readBits BitNumber5 BitCount2
+              |> decodeOperandType  
+            match operandType with
+            | Omitted -> [||]
+            | _ -> [| operandType |]
+
+        | LongForm -> 
+            let instruction = readByte machine address
+            [| BitNumber6; BitNumber5 |]
+            |> Array.map (fun bit -> readBits bit BitCount1 instruction)
+            |> Array.map (function
+                | 0 -> SmallOperand
+                | _ -> VariableOperand // Can only be 1
+               )
+        | ExtendedForm | VariableForm -> 
+          let offset, encodedOperandTypes, operandTypeOffsets = 
+            if opcode = EXT_12 || opcode = EXT_26 then // double VAR, up to 8 operands
+              Some (address+4), readWord machine (WordAddress (address+2)), [| 15; 13; 11; 9; 7; 5; 3; 1 |]
+            else // single VAR, up to 4 operands
+              let offset = if opcodeForm = ExtendedForm then 3 else 2
+              Some (address+offset), readByte machine (ByteAddress (address+1)), [| 7; 5; 3; 1 |]             
+          offset,
+            operandTypeOffsets          
+            |> Array.map (fun i -> readBits (BitNumber i) BitCount2 encodedOperandTypes |> decodeOperandType)
+            |> Array.filter (((=) Omitted) >> not)
+
+
       let operands =
         let operandsOffset, operandTypes = 
           match opcodeForm with
