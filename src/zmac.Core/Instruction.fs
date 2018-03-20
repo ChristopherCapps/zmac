@@ -529,8 +529,8 @@ module Instruction =
 
   let displayOperand operand =
     match operand with
-    | LargeConstant large -> Printf.sprintf "%04x " large
-    | SmallConstant small -> Printf.sprintf "%02x " small
+    | LargeConstant large -> Printf.sprintf "%04X " large
+    | SmallConstant small -> Printf.sprintf "%02X " small
     | Variable variable -> (displayVariable variable) + " " 
     
   // let displayJump instruction =
@@ -558,12 +558,13 @@ module Instruction =
       // else if isCall version instruction.opcode then displayCall instruction machine
       // else if hasIndirection instruction version then displayIndirect_operands instruction.operands
       // else 
-      instruction.operands
-      |> List.fold (fun (sb:System.Text.StringBuilder) operand -> 
-                      let operandStr = displayOperand operand
-                      sb.Append(operandStr)) 
-                      (new System.Text.StringBuilder())
-      
+      let sb = 
+        instruction.operands
+        |> List.fold (fun (sb:System.Text.StringBuilder) operand -> 
+                        let operandStr = displayOperand operand
+                        sb.Append(operandStr)) 
+                        (new System.Text.StringBuilder())
+      sb.ToString()
 
     let displayStore () =
       match instruction.store with
@@ -591,4 +592,4 @@ module Instruction =
     let store = displayStore() 
     let branch = displayBranch() 
     let text = displayText() 
-    sprintf "%04x: %s %s%s %s %s\n" address name operands store branch text
+    sprintf "%04X: %s %s%s %s %s\n" address name operands store branch text
