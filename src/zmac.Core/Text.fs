@@ -62,6 +62,18 @@ module Text =
             else loop (incrementWordAddress addr) zcodes                
         loop (WordAddress address) []
 
+    // At the given address, reads encoded characters until a terminator bit is set, returning the
+    // total bytes read.
+    // TODO: This could return the list of bytes, which could then be reused & mapped by readZCodeSeq
+    let encodedLength machine (ZStringAddress address) =
+        let rec loop addr len =
+            let word = readWord machine addr
+            if (readBit ZStringTerminator word) then 
+                len+2
+            else
+                loop (incrementWordAddress addr) len+2
+        loop (WordAddress address) 0
+
     // Given the hi- and lo-order 5-bit code comprising a ZSCII character, returns the mapped character.
     // See Table 1 (http://inform-fiction.org/zmachine/standards/z1point1/sect03.html) for Unicode translations
     // and customization for Version 5 and later

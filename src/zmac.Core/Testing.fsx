@@ -30,3 +30,4 @@ open Zmac.Core.Locals
 open Zmac.Core.Instruction
 
 //dictionaryEntry machine (DictionaryEntry 10)
+decode machine (InstructionAddress 0x4f05)

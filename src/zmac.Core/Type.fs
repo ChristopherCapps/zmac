@@ -59,6 +59,16 @@ module Type =
 
     type InstructionAddress = InstructionAddress of int
 
+    type Operand =
+      | LargeConstant of int
+      | SmallConstant of int
+      | Variable of Variable
+
+    type BranchAddress =
+      | ReturnTrue
+      | ReturnFalse
+      | BranchAddress of InstructionAddress
+
     let BitNumber0 = BitNumber 0
     let BitNumber1 = BitNumber 1
     let BitNumber2 = BitNumber 2
