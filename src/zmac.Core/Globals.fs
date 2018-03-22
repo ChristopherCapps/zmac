@@ -2,8 +2,7 @@ namespace Zmac.Core
 
 open Type
 open Utility
-open Machine
-open Machine.Memory
+open Story
 
 (*
     Globals are 2-byte words numbered from $10 to $FF, so there are 240 values. They
@@ -18,37 +17,37 @@ module Globals =
     [<Literal>]
     let LastGlobalVariable          = 0xFF
 
-    ///<summary>Returns the address of the global variable whose number is given, from the specified machine.</summary>
-    /// <param name="machine">the Z-machine to reference</param>
+    ///<summary>Returns the address of the global variable whose number is given, from the specified story.</summary>
+    /// <param name="story">the Z-story to reference</param>
     /// <param name="n">the global variable number, from <c>$10</c> to <c>$ff</c></param>
-    let globalVariableAddress machine (GlobalVariable n) =
+    let globalVariableAddress story (GlobalVariable n) =
         if n >= FirstGlobalVariable && n <= LastGlobalVariable then
-            let (GlobalVariablesTableAddress address) = globalVariablesTableAddress machine
+            let (GlobalVariablesTableAddress address) = globalVariablesTableAddress story
             incrementWordAddressBy (n - FirstGlobalVariable) (WordAddress address)
         else
             failwithf "Invalid global variable reference: %d. The valid range is %d to %d." n FirstGlobalVariable LastGlobalVariable
 
-    /// Reads and returns the 2-byte word value of the global variable whose number is given, from the specified machine. 
-    /// <param name="machine">the Z-machine to reference</param>
+    /// Reads and returns the 2-byte word value of the global variable whose number is given, from the specified story. 
+    /// <param name="story">the Z-story to reference</param>
     /// <param name="n">the global variable number, from <c>$10</c> to <c>$ff</c></param>
     /// <returns>a 2-byte word value</returns>
-    let readGlobalVar machine n =
-        readWord machine (globalVariableAddress machine n)
+    let readGlobalVar story n =
+        readWord story (globalVariableAddress story n)
 
-    /// Updates the 2-byte value of the specified global variable in the given Z-machine, returning an updated machine.
-    /// <param name="machine">the Z-machine to reference</param>
+    /// Updates the 2-byte value of the specified global variable in the given Z-story, returning an updated story.
+    /// <param name="story">the Z-story to reference</param>
     /// <param name="n">the global variable number, from <c>$10</c> to <c>$ff</c></param>
     /// <param name="value">the new value of the global variable</param>
-    /// <returns>a new Z-machine containing the update</returns>
-    let writeGlobalVar machine n value =
-        writeWord machine (globalVariableAddress machine n) value
+    /// <returns>a new Z-story containing the update</returns>
+    let writeGlobalVar story n value =
+        writeWord story (globalVariableAddress story n) value
 
-    let allGlobalVariables machine =
+    let allGlobalVariables story =
         [|FirstGlobalVariable..LastGlobalVariable|]
-        |> Array.map (GlobalVariable >> readGlobalVar machine)
+        |> Array.map (GlobalVariable >> readGlobalVar story)
 
-    let showGlobalVariables machine =
-        machine
+    let showGlobalVariables story =
+        story
         |> allGlobalVariables
         |> Array.mapi (fun i var -> sprintf "[%3d] %-7d" (i+0x10) var)
         |> Array.iter (fun line -> printfn "%s" line)

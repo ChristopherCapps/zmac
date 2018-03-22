@@ -2,12 +2,11 @@ namespace Zmac.Core
 
 open Type
 open Utility
-open Machine
-open Machine.Memory
+open Story
 
 module Instruction =
 
-  // ****** Types that comprise a complete Z-machine instruction ******
+  // ****** Types that comprise a complete Z-story instruction ******
 
   type OpcodeForm =
     | LongForm
@@ -300,13 +299,13 @@ module Instruction =
 
   // ****** Instruction decoding ******
 
-  let decode machine (InstructionAddress address) = 
-    let version = version machine
+  let decode story (InstructionAddress address) = 
+    let version = version story
 
     ///////// OPERAND FORM
     // Decode form of the opcode, stored in the high two bits
     let decodeOpcodeForm address =
-      let instruction = readByte machine address
+      let instruction = readByte story address
       match (readBits BitNumber7 BitCount2 instruction) with
         | 0b11 -> VariableForm
         | 0b10 -> ShortForm
@@ -316,7 +315,7 @@ module Instruction =
     ///////// OPERAND COUNT
     // Number of operands depends on form and instruction bits
     let decodeOperandCount address opcodeForm =
-      let instruction = readByte machine address
+      let instruction = readByte story address
       match opcodeForm with
       // We have 1 or 2 operands in short form, with the type also represented
       | ShortForm -> 
@@ -339,7 +338,7 @@ module Instruction =
     ///////// OPCODE MAPPING
     // Map the opcode number and operand count to a specific opcode type
     let decodeOpcode address opcodeForm operandCount =
-      let instruction = readByte machine address
+      let instruction = readByte story address
       let operandFamily = 
         match operandCount with
         | ZeroOperands -> ZeroOperandOpCodes
@@ -350,7 +349,7 @@ module Instruction =
         match opcodeForm with
         | ShortForm -> readBits BitNumber3 BitCount4 instruction
         | LongForm | VariableForm -> readBits BitNumber4 BitCount5 instruction
-        | ExtendedForm -> readByte machine (incrementByteAddress address)
+        | ExtendedForm -> readByte story (incrementByteAddress address)
       if opcodeNumber >= 0 && opcodeNumber < operandFamily.Length then 
         let operation' = operandFamily.[opcodeNumber]
         if operation' = ILLEGAL then 
@@ -375,7 +374,7 @@ module Instruction =
     let decodeOperandTypes address opcodeForm opcode = 
       match opcodeForm with
       | ShortForm ->
-          readByte machine address
+          readByte story address
           |> readBits BitNumber5 BitCount2
           |> decodeOperandType
           |> function
@@ -383,7 +382,7 @@ module Instruction =
               | operandType -> [ operandType ]
 
       | LongForm -> 
-          let instruction = readByte machine address
+          let instruction = readByte story address
           [ BitNumber6; BitNumber5 ]
           |> List.map (fun bit -> 
               readBits bit BitCount1 instruction
@@ -393,13 +392,13 @@ module Instruction =
 
       | ExtendedForm | VariableForm -> 
           let packedOperandTypesAddress = incrementByteAddress address
-          let packedOperandTypes = readByte machine packedOperandTypesAddress 
+          let packedOperandTypes = readByte story packedOperandTypesAddress 
       
           let unpackedOperandTypes = 
             let unpackedOperandTypes' = unpackOperandTypes packedOperandTypes
             if opcode = EXT_12 || opcode = EXT_26 then // double VAR, up to 8 operands
               let extPackedOperandTypesAddress = incrementByteAddress packedOperandTypesAddress
-              let extPackedOperandTypes = readByte machine extPackedOperandTypesAddress 
+              let extPackedOperandTypes = readByte story extPackedOperandTypesAddress 
               unpackedOperandTypes' @ (unpackOperandTypes extPackedOperandTypes)
             else
               unpackedOperandTypes'                
@@ -422,13 +421,13 @@ module Instruction =
         | operandType::tail -> 
             match operandType with
             | LargeOperand -> 
-                let operand = LargeConstant (readWord machine (byteAddressToWordAddress address'))
+                let operand = LargeConstant (readWord story (byteAddressToWordAddress address'))
                 loop tail (incrementByteAddressBy WordLength address') (acc @ [operand])
             | SmallOperand ->
-                let operand = SmallConstant (readByte machine address')
+                let operand = SmallConstant (readByte story address')
                 loop tail (incrementByteAddress address') (acc @ [operand])
             | VariableOperand ->
-                let operand = Variable (readByte machine address' |> decodeVariable)
+                let operand = Variable (readByte story address' |> decodeVariable)
                 loop tail (incrementByteAddress address') (acc @ [operand])
             | Omitted -> 
                 failwithf "Operand type 'OMITTED' cannot be decoded"
@@ -441,7 +440,7 @@ module Instruction =
 
     let decodeStore storeAddress opcode =
       if hasStore opcode version then
-        readByte machine storeAddress
+        readByte story storeAddress
         |> decodeVariable
         |> Some
       else
@@ -452,7 +451,7 @@ module Instruction =
 
     let branchLength branchAddress opcode =
       if hasBranch opcode version then
-        readByte machine branchAddress
+        readByte story branchAddress
         |> readBit BitNumber6
         |> function
             | true -> 1
@@ -461,7 +460,7 @@ module Instruction =
 
     let decodeBranch branchAddress opcode =
       if hasBranch opcode version then
-        let high = readByte machine branchAddress
+        let high = readByte story branchAddress
         let branchConditionResult = readBit BitNumber7 high
         let branchLength = branchLength branchAddress opcode
 
@@ -470,7 +469,7 @@ module Instruction =
           if (readBit BitNumber6 high) then
             high'
           else
-            let low = readByte machine (incrementByteAddress branchAddress)
+            let low = readByte story (incrementByteAddress branchAddress)
             let unsigned = 256 * high' + low
             if unsigned < 8192 then unsigned else unsigned - 16384
 
@@ -486,12 +485,12 @@ module Instruction =
 
     let decodeText textAddress opcode =
       if hasText opcode then
-        Some (Text.readZString machine textAddress)
+        Some (Text.readZString story textAddress)
       else 
         None
 
     let textLength textAddress opcode =
-      if hasText opcode then Text.encodedLength machine textAddress else 0
+      if hasText opcode then Text.encodedLength story textAddress else 0
 
     let instructionBaseAddress = ByteAddress address
     let opcodeForm = decodeOpcodeForm instructionBaseAddress
@@ -550,12 +549,12 @@ module Instruction =
   //       routine ^ args
   //     | _ -> accumulate_strings display_operand instr.operands
 
-  let display machine instruction =   
-    let version = version machine
+  let display story instruction =   
+    let version = version story
 
     let displayOperands () =
       // if instruction.opcode = OP1_140 then displayJump instruction
-      // else if isCall version instruction.opcode then displayCall instruction machine
+      // else if isCall version instruction.opcode then displayCall instruction story
       // else if hasIndirection instruction version then displayIndirect_operands instruction.operands
       // else 
       let sb = 
