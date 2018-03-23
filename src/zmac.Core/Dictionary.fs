@@ -2,7 +2,7 @@ namespace Zmac.Core
 
 open Type
 open Utility
-open Story
+open Model
 open Text
 
 module Dictionary =
@@ -28,73 +28,73 @@ module Dictionary =
     [<Literal>]
     let DictionaryEntryEncodedTextLength_V4 = 6
 
-    let dictionaryEntryEncodedTextLength story =
-        if isVersion4OrLater story then 
+    let dictionaryEntryEncodedTextLength model =
+        if isVersion4OrLater model then 
             DictionaryEntryEncodedTextLength_V4
         else
             DictionaryEntryEncodedTextLength_V3
 
-    let wordSeparatorsCountAddress story = 
-        let (DictionaryAddress address) = dictionaryAddress story
+    let wordSeparatorsCountAddress model = 
+        let (DictionaryAddress address) = dictionaryAddress model
         address
 
-    let wordSeparatorAddress story i = 
-        incrementByteAddressBy i (ByteAddress (wordSeparatorsCountAddress story))
+    let wordSeparatorAddress model i = 
+        incrementByteAddressBy i (ByteAddress (wordSeparatorsCountAddress model))
 
-    let wordSeparatorsCount story =
-        readByte story (ByteAddress (wordSeparatorsCountAddress story))
+    let wordSeparatorsCount model =
+        readByte model (ByteAddress (wordSeparatorsCountAddress model))
 
-    let wordSeparators story =
-        [|1..wordSeparatorsCount story|]
-        |> Array.map (fun i -> char (readByte story (wordSeparatorAddress story i)))
+    let wordSeparators model =
+        [|1..wordSeparatorsCount model|]
+        |> Array.map (fun i -> char (readByte model (wordSeparatorAddress model i)))
     
-    let dictionaryEntryLengthAddress story =
-        incrementByteAddressBy (wordSeparatorsCount story) (wordSeparatorAddress story 1) 
+    let dictionaryEntryLengthAddress model =
+        incrementByteAddressBy (wordSeparatorsCount model) (wordSeparatorAddress model 1) 
 
-    let dictionaryEntryLength story =
-        readByte story (dictionaryEntryLengthAddress story)
+    let dictionaryEntryLength model =
+        readByte model (dictionaryEntryLengthAddress model)
 
-    let dictionaryEntryCountAddress story =
-        incrementByteAddress (dictionaryEntryLengthAddress story) |> byteAddressToWordAddress
+    let dictionaryEntryCountAddress model =
+        incrementByteAddress (dictionaryEntryLengthAddress model) |> byteAddressToWordAddress
 
-    let dictionaryEntryCount story =
-        readWord story (dictionaryEntryCountAddress story)
+    let dictionaryEntryCount model =
+        readWord model (dictionaryEntryCountAddress model)
 
-    let dictionaryEntriesAddress story =
-        incrementWordAddressBy 1 (dictionaryEntryCountAddress story) |> wordAddressToByteAddress
+    let dictionaryEntriesAddress model =
+        incrementWordAddressBy 1 (dictionaryEntryCountAddress model) |> wordAddressToByteAddress
 
-    let isDictionaryEntryInRange story (DictionaryEntry i) =
-        i >= 1 && i <= (dictionaryEntryCount story)
+    let isDictionaryEntryInRange model (DictionaryEntry i) =
+        i >= 1 && i <= (dictionaryEntryCount model)
 
-    let dictionaryEntryAddress story (DictionaryEntry i) =
-        if isDictionaryEntryInRange story (DictionaryEntry i) then
-            let (ByteAddress address) = dictionaryEntriesAddress story
-            let offset = (i-1) * dictionaryEntryLength story
+    let dictionaryEntryAddress model (DictionaryEntry i) =
+        if isDictionaryEntryInRange model (DictionaryEntry i) then
+            let (ByteAddress address) = dictionaryEntriesAddress model
+            let offset = (i-1) * dictionaryEntryLength model
             DictionaryEntryAddress (address + offset)
         else
-            failwithf "Invalid dictionary entry reference: %d. The valid range is %d to %d." i 1 (dictionaryEntryCount story)            
+            failwithf "Invalid dictionary entry reference: %d. The valid range is %d to %d." i 1 (dictionaryEntryCount model)            
 
-    let dictionaryEntryWord story i = 
-        let (DictionaryEntryAddress dictionaryEntryBase) = dictionaryEntryAddress story i
-        readZString story (ZStringAddress dictionaryEntryBase)
+    let dictionaryEntryWord model i = 
+        let (DictionaryEntryAddress dictionaryEntryBase) = dictionaryEntryAddress model i
+        readZString model (ZStringAddress dictionaryEntryBase)
 
-    // let dictionaryEntryData story i =
-    //     let (DictionaryEntryAddress dictionaryEntryBase) = dictionaryEntryAddress story i
-    //     let dictionaryEntryDataAddress = incrementByteAddressBy (dictionaryEntryLength story) dictionaryEntryBase
+    // let dictionaryEntryData model i =
+    //     let (DictionaryEntryAddress dictionaryEntryBase) = dictionaryEntryAddress model i
+    //     let dictionaryEntryDataAddress = incrementByteAddressBy (dictionaryEntryLength model) dictionaryEntryBase
     //     // need to fetch bytes
 
-    let allDictionaryEntries story =
-        let entryCount = dictionaryEntryCount story
+    let allDictionaryEntries model =
+        let entryCount = dictionaryEntryCount model
         [|1..entryCount|]
         |> Array.map DictionaryEntry
 
-    let allDictionaryEntryWords story =
-        story
+    let allDictionaryEntryWords model =
+        model
         |> allDictionaryEntries
-        |> Array.map (dictionaryEntryWord story)
+        |> Array.map (dictionaryEntryWord model)
 
-    let showDictionary story =
-        story
+    let showDictionary model =
+        model
         |> allDictionaryEntryWords
         |> Array.mapi (fun i word -> sprintf "[%4d] %10s  " (i+1) word)
         |> Array.chunkBySize 4

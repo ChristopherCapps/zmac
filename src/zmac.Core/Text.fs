@@ -2,7 +2,7 @@ namespace Zmac.Core
 
 open Type
 open Utility
-open Story
+open Model
 
 module Text =
 
@@ -48,10 +48,10 @@ module Text =
 
     // At the given address, reads encoded characters until a terminator bit is set, returning the
     // ordered list of codes. This sequence of codes must be converted to Z-Characters.
-    let readZCodeSeq story (ZStringAddress address) =
+    let readZCodeSeq model (ZStringAddress address) =
         // Recursively parse and collect zcodes from the given address until <eos> bit is set
         let rec loop addr acc =
-            let word = readWord story addr
+            let word = readWord model addr
             let isEndOfString = readBit ZStringTerminator word
             let zcodes = 
                 ZCodeOffsets
@@ -64,9 +64,9 @@ module Text =
     // At the given address, reads encoded characters until a terminator bit is set, returning the
     // total bytes read.
     // TODO: This could return the list of bytes, which could then be reused & mapped by readZCodeSeq
-    let encodedLength story (ZStringAddress address) =
+    let encodedLength model (ZStringAddress address) =
         let rec loop addr len =
-            let word = readWord story addr
+            let word = readWord model addr
             if (readBit ZStringTerminator word) then 
                 len+2
             else
@@ -92,19 +92,19 @@ module Text =
         Abbreviations are referenced by a table of addresses. These addresses must be doubled
         and then point to Z-encoded text representing the abbreviation.
     *)
-    let abbreviationAddress story (Abbreviation i) =        
+    let abbreviationAddress model (Abbreviation i) =        
         // Determine the offset into the table that contains our "packed" abbreviation address
-        let (AbbreviationsTableAddress tableAddress) = abbreviationsTableAddress story
-        AbbreviationAddress ((readWord story (incrementWordAddressBy i (WordAddress tableAddress)))*2)
+        let (AbbreviationsTableAddress tableAddress) = abbreviationsTableAddress model
+        AbbreviationAddress ((readWord model (incrementWordAddressBy i (WordAddress tableAddress)))*2)
 
     // TODO: Consider refactoring such that we read a single ZChar in a separate function; note
     // this will complicate the recursive abbreviation insertion
-    let rec readZString story address =
+    let rec readZString model address =
 
         let readAbbreviationAsChars abbreviationSet abbreviationIndex =
             let abbreviation = Abbreviation (32 * (abbreviationSet - 1) + abbreviationIndex)
-            let (AbbreviationAddress abbreviationAddress) = abbreviationAddress story abbreviation
-            readZString story (ZStringAddress abbreviationAddress)
+            let (AbbreviationAddress abbreviationAddress) = abbreviationAddress model abbreviation
+            readZString model (ZStringAddress abbreviationAddress)
             |> Seq.toList
         
         let rec loop zcodes acc =
@@ -163,19 +163,19 @@ module Text =
                 //printfn "[Pad]"; 
                 loop zs acc // ignore
         
-        loop (readZCodeSeq story address) List.empty
+        loop (readZCodeSeq model address) List.empty
         |> charSeqToString
 
-    let readAbbreviation story abbreviation =
-        let (AbbreviationAddress address) = abbreviationAddress story abbreviation
-        readZString story (ZStringAddress address)
+    let readAbbreviation model abbreviation =
+        let (AbbreviationAddress address) = abbreviationAddress model abbreviation
+        readZString model (ZStringAddress address)
 
-    let abbreviationsList story =
+    let abbreviationsList model =
         [0..(AbbreviationsCount-1)]
-        |> Seq.map (fun i -> readAbbreviation story (Abbreviation i))
+        |> Seq.map (fun i -> readAbbreviation model (Abbreviation i))
 
-    let showAbbreviations story =
-        story
+    let showAbbreviations model =
+        model
         |> abbreviationsList
         |> Seq.mapi (fun i abbr -> sprintf "[%4d] \"%s\"" i abbr)
         |> Seq.iter (fun line -> printfn "%s" line)

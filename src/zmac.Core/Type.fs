@@ -14,7 +14,7 @@ module Type =
     // A Byte is technically a 1-byte value, but represented internally as an int for convenience
     type ZByte = int
 
-    // An absolute Z-Machine address which can span the entire story
+    // An absolute Z-Machine address which can span the entire model
     type ByteAddress = ByteAddress of int
     type WordAddress = WordAddress of int
 
@@ -113,7 +113,8 @@ module Type =
 
     type Version = Version1 | Version2 | Version3 | Version4 | Version5 | Version6
 
-    type OpCode =
+    //[<System.Diagnostics.CodeAnalysis.SuppressMessage("NameConventions", "IdentifiersMustNotContainUnderscores")>]
+    type OpCode =      
       | OP2_1   | OP2_2   | OP2_3   | OP2_4   | OP2_5   | OP2_6   | OP2_7
       | OP2_8   | OP2_9   | OP2_10  | OP2_11  | OP2_12  | OP2_13  | OP2_14  | OP2_15
       | OP2_16  | OP2_17  | OP2_18  | OP2_19  | OP2_20  | OP2_21  | OP2_22  | OP2_23

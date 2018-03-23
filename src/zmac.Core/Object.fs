@@ -2,7 +2,7 @@ namespace Zmac.Core
 
 open Type
 open Utility
-open Story
+open Model
 
 module Object =
 
@@ -10,48 +10,48 @@ module Object =
     (* Properties are numbered from 1 *)
     (* Attributes are numbered from 0 *)
     
-    let objectMaxCount story =
-        if (isVersion4OrLater story) then 0xFFFF else 0xFF
+    let objectMaxCount model =
+        if (isVersion4OrLater model) then 0xFFFF else 0xFF
 
-    let objectPropertyCount story =
-        if (isVersion4OrLater story) then 63 else 31
+    let objectPropertyCount model =
+        if (isVersion4OrLater model) then 63 else 31
 
-    let objectAttributeCount story =
-        if (isVersion4OrLater story) then 48 else 32
+    let objectAttributeCount model =
+        if (isVersion4OrLater model) then 48 else 32
 
-    let allObjectAttributes story =
-        let lastAttribute = (objectAttributeCount story)-1
+    let allObjectAttributes model =
+        let lastAttribute = (objectAttributeCount model)-1
         [|0..lastAttribute|]
         |> Array.map ObjectAttribute
 
-    let objectAttributeSizeBytes story =
-        if (isVersion4OrLater story) then 6 else 4
+    let objectAttributeSizeBytes model =
+        if (isVersion4OrLater model) then 6 else 4
 
-    let objectNumberSizeBytes story =
-        if (isVersion4OrLater story) then 2 else 1
+    let objectNumberSizeBytes model =
+        if (isVersion4OrLater model) then 2 else 1
 
-    let objectEntrySizeBytes story =
-        if (isVersion4OrLater story) then 14 else 9
+    let objectEntrySizeBytes model =
+        if (isVersion4OrLater model) then 14 else 9
 
-    let objectPropertyDefaultsAddress story = 
-        let (ObjectTableAddress address) = objectTableAddress story
+    let objectPropertyDefaultsAddress model = 
+        let (ObjectTableAddress address) = objectTableAddress model
         ObjectPropertyDefaultsAddress address
 
-    let objectPropertyDefaultAddress story (ObjectProperty property) =
+    let objectPropertyDefaultAddress model (ObjectProperty property) =
         //let (ObjectPropertyNumber n') = n    
-        if property < 1 || property > (objectPropertyCount story) then
-            failwithf "Object property number out of range: %d. The valid range is %d to %d." property 1 (objectPropertyCount story)
-        let (ObjectPropertyDefaultsAddress tableAddress) = objectPropertyDefaultsAddress story
+        if property < 1 || property > (objectPropertyCount model) then
+            failwithf "Object property number out of range: %d. The valid range is %d to %d." property 1 (objectPropertyCount model)
+        let (ObjectPropertyDefaultsAddress tableAddress) = objectPropertyDefaultsAddress model
         let (WordAddress address) = incrementWordAddressBy (property-1) (WordAddress tableAddress)
         ObjectPropertyAddress address
 
-    let objectPropertyDefault story property =
-        let (ObjectPropertyAddress address) = objectPropertyDefaultAddress story property
-        readWord story (WordAddress address)
+    let objectPropertyDefault model property =
+        let (ObjectPropertyAddress address) = objectPropertyDefaultAddress model property
+        readWord model (WordAddress address)
 
-    let objectTreeAddress story = 
-        let (ObjectTableAddress tableAddress) = objectTableAddress story
-        let (WordAddress address) = incrementWordAddressBy (objectPropertyCount story) (WordAddress tableAddress)
+    let objectTreeAddress model = 
+        let (ObjectTableAddress tableAddress) = objectTableAddress model
+        let (WordAddress address) = incrementWordAddressBy (objectPropertyCount model) (WordAddress tableAddress)
         ObjectTreeAddress address
 
     (* 
@@ -59,92 +59,92 @@ module Object =
        all object tree definitions are below that address. Given the start of the object tree and the
        size of each object entry, determine the object count. 
     *)
-    let objectCount story =
-        let offset = objectEntrySizeBytes story
+    let objectCount model =
+        let offset = objectEntrySizeBytes model
         let rec loop lowPropAddr nextPropAddrPtr (nextObjNum, nextObjAddr) =
-            let nextPropAddr = readWord story (WordAddress nextPropAddrPtr)
+            let nextPropAddr = readWord model (WordAddress nextPropAddrPtr)
             let lowPropAddr' = System.Math.Min (lowPropAddr, nextPropAddr)
             if nextObjAddr >= lowPropAddr' then nextObjNum-1 else 
                 loop lowPropAddr' (nextPropAddrPtr+offset) (nextObjNum+1, nextObjAddr+offset)
-        let (ObjectTreeAddress object1Address) = objectTreeAddress story        
-        let obj1PropertiesPtr = object1Address + (objectEntrySizeBytes story) - WordLength
+        let (ObjectTreeAddress object1Address) = objectTreeAddress model        
+        let obj1PropertiesPtr = object1Address + (objectEntrySizeBytes model) - WordLength
         loop 0xFFFF obj1PropertiesPtr (2, obj1PropertiesPtr+WordLength)
 
-    let allObjects story =
-        let count = objectCount story
+    let allObjects model =
+        let count = objectCount model
         [|1..count|] 
         |> Array.map Object
 
-    let objectAddress story (Object obj) =
-        if obj < 1 || obj > (objectCount story) then
-            failwithf "Object number out of range: %d. The valid range is %d to %d." obj 1 (objectCount story)
-        let (ObjectTreeAddress treeAddress) = objectTreeAddress story
-        let (ByteAddress address) = (incrementByteAddressBy ((obj-1)*(objectEntrySizeBytes story)) (ByteAddress treeAddress))
+    let objectAddress model (Object obj) =
+        if obj < 1 || obj > (objectCount model) then
+            failwithf "Object number out of range: %d. The valid range is %d to %d." obj 1 (objectCount model)
+        let (ObjectTreeAddress treeAddress) = objectTreeAddress model
+        let (ByteAddress address) = (incrementByteAddressBy ((obj-1)*(objectEntrySizeBytes model)) (ByteAddress treeAddress))
         ObjectAddress address
 
-    let objectAttributesAddress story obj =
-        let (ObjectAddress address) = objectAddress story obj
+    let objectAttributesAddress model obj =
+        let (ObjectAddress address) = objectAddress model obj
         ObjectAttributesAddress address
 
-    let objectAttributeAddress story obj (ObjectAttribute attribute) = 
-        if attribute < 0 || attribute > ((objectAttributeCount story) - 1) then
-            failwithf "Object attribute number out of range: %d. The valid range is %d to %d." attribute 0 (objectAttributeCount story)
-        let (ObjectAttributesAddress address) = objectAttributesAddress story obj
+    let objectAttributeAddress model obj (ObjectAttribute attribute) = 
+        if attribute < 0 || attribute > ((objectAttributeCount model) - 1) then
+            failwithf "Object attribute number out of range: %d. The valid range is %d to %d." attribute 0 (objectAttributeCount model)
+        let (ObjectAttributesAddress address) = objectAttributesAddress model obj
         let (ByteAddress attributeAddress) = incrementByteAddressBy (attribute / 8)  (ByteAddress address)
         let bitNumber = BitNumber (7 - (attribute % 8))
         ObjectAttributeAddress (attributeAddress, bitNumber)
 
-    let readObjectAttribute story obj attribute =
-        let (ObjectAttributeAddress (address, bitNumber)) = objectAttributeAddress story obj attribute
-        readBit bitNumber (readByte story (ByteAddress address))
+    let readObjectAttribute model obj attribute =
+        let (ObjectAttributeAddress (address, bitNumber)) = objectAttributeAddress model obj attribute
+        readBit bitNumber (readByte model (ByteAddress address))
 
     let isObjectAttributeSet = readObjectAttribute
 
-    let writeObjectAttribute story obj attribute isSet =
-        let (ObjectAttributeAddress (address, bitNumber)) = objectAttributeAddress story obj attribute
-        writeBit story (ByteAddress address) bitNumber isSet
+    let writeObjectAttribute model obj attribute isSet =
+        let (ObjectAttributeAddress (address, bitNumber)) = objectAttributeAddress model obj attribute
+        writeBit model (ByteAddress address) bitNumber isSet
 
-    let setObjectAttribute story obj attribute = 
-        writeObjectAttribute story obj attribute true
+    let setObjectAttribute model obj attribute = 
+        writeObjectAttribute model obj attribute true
 
-    let clearObjectAttribute story obj attribute = 
-        writeObjectAttribute story obj attribute false
+    let clearObjectAttribute model obj attribute = 
+        writeObjectAttribute model obj attribute false
 
-    let readAllObjectAttributes story obj =
-        story
+    let readAllObjectAttributes model obj =
+        model
         |> allObjectAttributes
-        |> Array.map (readObjectAttribute story obj)
+        |> Array.map (readObjectAttribute model obj)
 
-    let readObjectNumber story (ObjectNumberAddress address) =
-        if (isVersion4OrLater story) then
-            readWord story (WordAddress address)
+    let readObjectNumber model (ObjectNumberAddress address) =
+        if (isVersion4OrLater model) then
+            readWord model (WordAddress address)
         else
-            readByte story (ByteAddress address)
+            readByte model (ByteAddress address)
         |> Object
 
-    let writeObjectNumber story (ObjectNumberAddress address) (Object obj) =
-        if (isVersion4OrLater story) then
-            writeWord story (WordAddress address) obj
+    let writeObjectNumber model (ObjectNumberAddress address) (Object obj) =
+        if (isVersion4OrLater model) then
+            writeWord model (WordAddress address) obj
         else
-            writeByte story (ByteAddress address) obj
+            writeByte model (ByteAddress address) obj
 
-    let objectParentAddress story obj =
-        let (ObjectAttributesAddress address) = objectAttributesAddress story obj
-        ObjectNumberAddress (address + (objectAttributeSizeBytes story))
+    let objectParentAddress model obj =
+        let (ObjectAttributesAddress address) = objectAttributesAddress model obj
+        ObjectNumberAddress (address + (objectAttributeSizeBytes model))
 
-    let objectSiblingAddress story obj =
-        let (ObjectNumberAddress parent) = objectParentAddress story obj
-        ObjectNumberAddress (parent + (objectNumberSizeBytes story))
+    let objectSiblingAddress model obj =
+        let (ObjectNumberAddress parent) = objectParentAddress model obj
+        ObjectNumberAddress (parent + (objectNumberSizeBytes model))
 
-    let objectChildAddress story obj =
-        let (ObjectNumberAddress sibling) = objectSiblingAddress story obj
-        ObjectNumberAddress (sibling + (objectNumberSizeBytes story))
+    let objectChildAddress model obj =
+        let (ObjectNumberAddress sibling) = objectSiblingAddress model obj
+        ObjectNumberAddress (sibling + (objectNumberSizeBytes model))
 
-    let private readObjectRelation faddress story obj =
-        readObjectNumber story (faddress story obj)
+    let private readObjectRelation faddress model obj =
+        readObjectNumber model (faddress model obj)
 
-    let private writeObjectRelation faddress story obj relation =
-        writeObjectNumber story (faddress story obj) relation
+    let private writeObjectRelation faddress model obj relation =
+        writeObjectNumber model (faddress model obj) relation
 
     let readObjectParent = 
         readObjectRelation objectParentAddress
@@ -155,29 +155,29 @@ module Object =
     let readObjectChild = 
         readObjectRelation objectChildAddress
 
-    let objectPropertiesPointer story obj =
-        let (ObjectNumberAddress child) = objectChildAddress story obj
-        WordAddress (child + objectNumberSizeBytes story)
+    let objectPropertiesPointer model obj =
+        let (ObjectNumberAddress child) = objectChildAddress model obj
+        WordAddress (child + objectNumberSizeBytes model)
 
-    let objectPropertiesAddress story obj =
-        ByteAddress (readWord story (objectPropertiesPointer story obj))
+    let objectPropertiesAddress model obj =
+        ByteAddress (readWord model (objectPropertiesPointer model obj))
 
     let objectShortNameAddress = objectPropertiesAddress
 
-    let objectPropertiesDataAddress story obj =
-        let (ByteAddress address) = objectPropertiesAddress story obj
-        let shortNameLengthWords = readByte story (ByteAddress address)
+    let objectPropertiesDataAddress model obj =
+        let (ByteAddress address) = objectPropertiesAddress model obj
+        let shortNameLengthWords = readByte model (ByteAddress address)
         ObjectPropertiesDataAddress (address + 1 + shortNameLengthWords*WordLength)
 
-    let readObjectProperties story obj =
+    let readObjectProperties model obj =
         let rec loop propAddr acc =
             let propAddr' = ByteAddress propAddr
-            let size = readByte story propAddr'
+            let size = readByte model propAddr'
             if size = 0 then acc else
-            if (isVersion4OrLater story) then
+            if (isVersion4OrLater model) then
                 let propNum = readBits BitNumber5 BitCount6 size // Bottom 6 bits
                 if (readBit BitNumber7 size) then                    
-                    let dataSize = readBits BitNumber5 BitCount6 (readByte story (incrementByteAddress propAddr'))
+                    let dataSize = readBits BitNumber5 BitCount6 (readByte model (incrementByteAddress propAddr'))
                     let dataSize' = if dataSize = 0 then 64 else dataSize
                     let nextPropAddr = propAddr + 2 + dataSize'
                     loop nextPropAddr (acc@[(ObjectPropertyData (ObjectProperty propNum,
@@ -196,34 +196,34 @@ module Object =
                                                              ObjectPropertyDataSize dataSize, 
                                                              ObjectPropertyDataAddress (propAddr + 1)))])
                                                                  
-        let (ObjectPropertiesDataAddress address) = objectPropertiesDataAddress story obj
+        let (ObjectPropertiesDataAddress address) = objectPropertiesDataAddress model obj
         loop address []
 
-    let objectShortName story obj =
-        let (ByteAddress address) = objectShortNameAddress story obj
-        Text.readZString story (ZStringAddress (address+1))
+    let objectShortName model obj =
+        let (ByteAddress address) = objectShortNameAddress model obj
+        Text.readZString model (ZStringAddress (address+1))
 
-    let objectToString story obj =
+    let objectToString model obj =
         let (Object n) = obj
-        let shortName = objectShortName story obj
+        let shortName = objectShortName model obj
         let (Object parent), (Object sibling), (Object child) = 
-            readObjectParent story obj,
-            readObjectSibling story obj,
-            readObjectChild story obj
+            readObjectParent model obj,
+            readObjectSibling model obj,
+            readObjectChild model obj
         let attributes = 
-            story
+            model
             |> allObjectAttributes
-            |> Array.choose (fun attr -> if (isObjectAttributeSet story obj attr) then Some attr else None)
+            |> Array.choose (fun attr -> if (isObjectAttributeSet model obj attr) then Some attr else None)
             |> Array.map (fun (ObjectAttribute i) -> i)
          
         sprintf "%5d. %-35s[Parent: %5d] [Sibling: %5d] [Child: %5d] [Attributes: %A]" 
             n shortName parent sibling child attributes
 
-    let showObject story obj = 
-        printfn "%s" (objectToString story obj)
+    let showObject model obj = 
+        printfn "%s" (objectToString model obj)
         
-    let showObjects story =
-        story
+    let showObjects model =
+        model
         |> allObjects
-        |> Array.map (objectToString story)
+        |> Array.map (objectToString model)
         |> Array.iter (printfn "%s")

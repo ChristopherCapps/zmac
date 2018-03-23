@@ -24,13 +24,14 @@
     <Compile Include="Type.fs" />
     <Compile Include="Utility.fs" />
     <Compile Include="Memory.fs" />
-    <Compile Include="Story.fs" />
+    <Compile Include="Model.fs" />
     <Compile Include="Globals.fs" />
     <Compile Include="Text.fs" />
     <Compile Include="Dictionary.fs" />
     <Compile Include="Object.fs" />
     <Compile Include="Locals.fs" />
     <Compile Include="Instruction.fs" />
+    <Compile Include="Story.fs" />
     <Compile Include="External.fs" />
     <Compile Include="Interpreter.fs" />
   </ItemGroup>
