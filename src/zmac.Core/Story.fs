@@ -8,7 +8,6 @@ module Story =
     type T = { 
         dynamicMemory: Memory.Dynamic.T
         staticMemory: Memory.Static.T
-        //processor: Processor.T
     }
 
     let readByte story address =
@@ -43,12 +42,15 @@ module Story =
     module Header = 
         [<Literal>]
         let HeaderSize                              = 64
+        
+        /// Note: A "pointer" is an address where another address is stored
+
+        (*
+            === Versions 3 and below only follow ===
+        *)
 
         /// The address containing the value of the Z-story specification to which this story complies
         let VersionAddress                          = ByteAddress 0x00
-        
-        /// A "pointer" is an address where another address is stored
-
         /// A pointer to the address representing the start of "high" memory
         let HighMemoryPointer                       = WordAddress 0x04
         /// A pointer to the address representing the start of the dictionary table
@@ -61,6 +63,25 @@ module Story =
         let StaticMemoryPointer                     = WordAddress 0x0E
         /// A pointer to the address representing the start of the abbreviations table
         let AbbreviationsTablePointer               = WordAddress 0x18
+        /// In versions before 6, the initial program instruction byte address; in V6,
+        /// a packed address of the "main" routine
+        let InitialProgramCounterAddress            = WordAddress 0x06
+        /// Conventional: Release number (2 bytes)
+        let ReleaseNumberAddress                    = WordAddress 0x02
+        /// Conventional: Serial number (6 ASCII chars)
+        let SerialNumberAddress                     = ByteAddress 0x12
+        /// Standard revision number
+        let StandardRevisionNumberAddress           = ByteAddress 0x32
+
+        /// Flags1
+        /// Base of high memory
+        /// Flags2
+        /// File length
+        /// File checksum
+
+    (*
+        === Versions 3 and below only follow ===
+    *)
 
     let version story = 
         let version = readByte story Header.VersionAddress
@@ -92,6 +113,27 @@ module Story =
 
     let globalVariablesTableAddress story = 
         GlobalVariablesTableAddress (readWord story Header.GlobalVariablesTablePointer)
+
+    let initialProgramCounter story =
+        let ipc = readWord story Header.InitialProgramCounterAddress
+        match (version story) with
+        | Version6 -> InstructionAddress (ipc*4+1)
+        | _ -> InstructionAddress ipc
+
+    let serialNumber story =
+        [|0..6|]
+        |> Array.map (fun i ->
+            readByte story (incrementByteAddressBy i Header.SerialNumberAddress)
+            |> intToChar)
+        |> charSeqToString
+        |> SerialNumber
+
+    let releaseNumber story =
+        ReleaseNumber (readWord story Header.ReleaseNumberAddress)
+
+    (*
+        === Factory function and helpers ===
+    *)
 
     let make dynamicMemory staticMemory =
         { dynamicMemory = dynamicMemory; staticMemory = staticMemory }

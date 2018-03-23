@@ -76,6 +76,8 @@ module Utility =
 
     let byteToChar (b:byte) = char b
 
+    let intToChar (i:int) = char i
+
     // // Divides the given array into two arrays at the specified address,
     // // with the first array containing the address.
     // let subdivideBytes (bs:byte array) address = 

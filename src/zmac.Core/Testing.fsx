@@ -17,7 +17,7 @@ open Zmac.Core
 let testsRoot = @"" + __SOURCE_DIRECTORY__ + "/../../tests/zmac.Tests"
 let storyFile = testsRoot + @"/Story/zork1.z3"
 let story = Story.Helpers.createFromFile storyFile
-let machine4 = Story.Helpers.createFromFile (testsRoot + @"/Story/Trinity.z4")
+let story4 = Story.Helpers.createFromFile (testsRoot + @"/Story/Trinity.z4")
 
 open Zmac.Core.Type
 open Zmac.Core.Utility

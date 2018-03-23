@@ -13,7 +13,7 @@ module Type =
     // A Byte is technically a 1-byte value, but represented internally as an int for convenience
     type ZByte = int
 
-    // An absolute Z-Machine address which can span the entire machine
+    // An absolute Z-Machine address which can span the entire story
     type ByteAddress = ByteAddress of int
     type WordAddress = WordAddress of int
 
@@ -30,6 +30,9 @@ module Type =
         | Global of GlobalVariable
         | Stack
 
+    type ReleaseNumber = ReleaseNumber of int
+    type SerialNumber = SerialNumber of string
+    
     type DictionaryAddress = DictionaryAddress of int
     type DictionaryEntry = DictionaryEntry of int
     type DictionaryEntryAddress = DictionaryEntryAddress of int
