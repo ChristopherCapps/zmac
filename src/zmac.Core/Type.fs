@@ -2,9 +2,10 @@ namespace Zmac.Core
 
 module Type =
 
+    (* PRIMITIVES & ADDRESS TYPES *)
+
     // A typed reference to a specific bit in a byte or word
     type BitNumber = BitNumber of int
-
     // A typed reference to a number of consecutive bits
     type BitCount = BitCount of int
 
@@ -17,33 +18,39 @@ module Type =
     type ByteAddress = ByteAddress of int
     type WordAddress = WordAddress of int
 
+    (* HEADER TYPES *)
+
     type VersionAddress = VersionAddress of int
     type StaticMemoryAddress = StaticMemoryAddress of int
-
+    type DictionaryAddress = DictionaryAddress of int
+    type AbbreviationsTableAddress = AbbreviationsTableAddress of int
+    type ObjectTableAddress = ObjectTableAddress of int
     type GlobalVariablesTableAddress = GlobalVariablesTableAddress of int
-    type GlobalVariable = GlobalVariable of int
+    type ReleaseNumber = ReleaseNumber of int
+    type SerialNumber = SerialNumber of string
+    
+    (* VARIABLE TYPES *)
 
+    type GlobalVariable = GlobalVariable of int
     type LocalVariable = LocalVariable of int
 
     type Variable = 
         | Local of LocalVariable
         | Global of GlobalVariable
         | Stack
-
-    type ReleaseNumber = ReleaseNumber of int
-    type SerialNumber = SerialNumber of string
     
-    type DictionaryAddress = DictionaryAddress of int
+    (* DICTIONARY TYPES *)
+
     type DictionaryEntry = DictionaryEntry of int
     type DictionaryEntryAddress = DictionaryEntryAddress of int
-    
-    type ZStringAddress = ZStringAddress of int
 
-    type AbbreviationsTableAddress = AbbreviationsTableAddress of int
+    (* ABBREVIATIONS TYPES *)
+
     type AbbreviationAddress = AbbreviationAddress of int
     type Abbreviation = Abbreviation of int
 
-    type ObjectTableAddress = ObjectTableAddress of int
+    (* OBJECT TABLE TYPES *)
+
     type ObjectPropertyDefaultsAddress = ObjectPropertyDefaultsAddress of int
     type ObjectPropertyAddress = ObjectPropertyAddress of int
     type ObjectProperty = ObjectProperty of int
@@ -60,7 +67,13 @@ module Type =
     type ObjectAttributeAddress = ObjectAttributeAddress of int * BitNumber
     type ObjectPropertiesAddress = ObjectPropertiesAddress of int
 
+    (* INSTRUCTION/OPCODE TYPES *)
+
     type InstructionAddress = InstructionAddress of int
+
+    (* ZTEXT TYPES *)    
+
+    type ZStringAddress = ZStringAddress of int
 
     type Operand =
       | LargeConstant of int

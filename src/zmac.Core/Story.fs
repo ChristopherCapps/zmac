@@ -95,9 +95,7 @@ module Story =
         | _ -> failwithf "Unrecognized story version: %d" version
 
     let isVersion4OrLater story =
-        match (version story) with
-        | Version1 | Version2 | Version3 -> false
-        | _ -> true
+        (version story) >= Version4
 
     let dictionaryAddress story = 
         DictionaryAddress (readWord story Header.DictionaryPointer)
@@ -121,7 +119,7 @@ module Story =
         | _ -> InstructionAddress ipc
 
     let serialNumber story =
-        [|0..6|]
+        [|0..5|]
         |> Array.map (fun i ->
             readByte story (incrementByteAddressBy i Header.SerialNumberAddress)
             |> intToChar)
