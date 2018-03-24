@@ -34,6 +34,7 @@
     <Compile Include="Story.fs" />
     <Compile Include="External.fs" />
     <Compile Include="Interpreter.fs" />
+    <Compile Include="Serviceability.fs" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

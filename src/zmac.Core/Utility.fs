@@ -99,6 +99,3 @@ module Utility =
         |> Seq.toArray
         |> System.String
         |> string
-
-    let bin (tw: System.IO.TextWriter) value = 
-        tw.Write("{0}", System.Convert.ToString(int64 value, 2))

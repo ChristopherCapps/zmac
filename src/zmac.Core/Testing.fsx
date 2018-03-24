@@ -11,6 +11,7 @@
 #load "Story.fs"
 #load "External.fs"
 #load "Interpreter.fs"
+#load "Serviceability.fs"
 
 // The following updates the assembly search path
 //#I __SOURCE_DIRECTORY__
@@ -32,6 +33,7 @@ open Zmac.Core.Dictionary
 open Zmac.Core.Object
 open Zmac.Core.Locals
 open Zmac.Core.Instruction
+open Zmac.Core.Serviceability.Printf
 
 //dictionaryEntry model (DictionaryEntry 10)
 let instr = decode story (InstructionAddress 0x4f05)
